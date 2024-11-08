@@ -634,7 +634,7 @@ data_10_mer$city <- gsub("\\.", "", data_10_mer$city) #to match cities in other 
 
 
 #Animal agriculture data 
-sec_01_aa_raw <- read_csv("WWSCAN_sewershed_agriculture.csv")
+sec_01_aa_raw <- read_csv("WWSCAN_sewershed_agriculture_v2.csv")
 ```
 
 Since we're treating different time points for each WWTP as replicates, we'll summarize the dPCR data so that each treatment plant has one value for one target and format other data frames to be wide to be merged. 
@@ -677,19 +677,18 @@ There is only one data item for hogs.
 ```{r prep_aa}
 #Filter for "cattle, incl calves" 
 sec_01_aa_cow <- sec_01_aa_raw[grepl("CATTLE", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ] %>% 
-  filter(Data.Item == "CATTLE, INCL CALVES - INVENTORY")
+  filter(Data.Item == "CATTLE, INCL CALVES - INVENTORY") %>% 
+  select("name", "Data.Item", "Value_num")
 
 #Add up all types of chicken for an inclusive number of chickens for each sewershed 
 sec_01_aa_ckn <- sec_01_aa_raw[grepl("CHICKENS", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ] %>%
   group_by(name) %>%
-  summarise(n_cnty_data_any = sum(n_cnty_data_any, na.rm = TRUE),
-            n_cnty_data_value = sum(n_cnty_data_value, na.rm = TRUE),
-            Value = sum(Value, na.rm = TRUE),
-            n_cnty_total = sum(n_cnty_total, na.rm = TRUE))
+  summarise(Value_num = sum(Value_num, na.rm = TRUE))
 sec_01_aa_ckn$Data.Item <- "CHICKEN, TOTAL"
 
 #Hogs 
-sec_01_aa_pig <- sec_01_aa_raw[grepl("HOGS", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ]
+sec_01_aa_pig <- sec_01_aa_raw[grepl("HOGS", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ] %>%
+  select("name", "Data.Item", "Value_num")
 
 #Merge cow, chicken, and pig together 
 sec_02_aa_filt <- rbind(sec_01_aa_cow, sec_01_aa_ckn, sec_01_aa_pig) %>% 
@@ -697,8 +696,8 @@ sec_02_aa_filt <- rbind(sec_01_aa_cow, sec_01_aa_ckn, sec_01_aa_pig) %>%
 
 #Make into wide data frame
 sec_03_aa_wide <- sec_02_aa_filt %>% 
-  select(plant, Data.Item, Value) %>% 
-  pivot_wider(names_from = Data.Item, values_from = Value)
+  select(plant, Data.Item, Value_num) %>% 
+  pivot_wider(names_from = Data.Item, values_from = Value_num)
 
 ```
 
