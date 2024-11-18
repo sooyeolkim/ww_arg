@@ -608,30 +608,75 @@ Importing the secondary database to be used with our ARG concentration data are:
 2. Dataset with various indicators such as EJI, SVI, etc 
 3. Animal agriculture data that has number of chickens, cows, and hogs in the sewershed
 
+*Note: for All_metadata_08_12_24.csv the following changes were made to the csv to match with EPIC data: 
+1. First column of row numbers deleted
+2. Juneau and Burroughs was changed to Juneau 
+3. District of Columbia's county and state was changed from Washington to District Of Columbia and District of Columbia
+4. DuPage was changed to Dupage 
+5. Punctuation was taken out from St. Joseph
+6. Saint Mary's was changed to St Marys 
+
+*Note: for EPIC, the rows "None of the above" and "Total" were deleted 
+
+
 ```{r sec_import}
-#Antibiotic drug consumption 
-sec_01_ABD_raw <- read_csv("Secondary Data - Compile_dataframe.csv")
-sec_02_ABD_filt <- sec_01_ABD_raw %>% 
-  select(Plant, city, state, site_name, `Pen-Ceph1-4MRSA`, Colistin, Carbapenems, 
-         `Pen/CephALL`, Tetracycline, Vancomycin, TotalEncounters, `%Pen-Ceph1-4MRSA`,
-         `%Colistin`, `%Carbapenems`, `%Pen/CephALL`, `%Tetracycline`, `%Vancomycin`) %>%
-  distinct() %>% 
-  rename(plant = Plant, 
-         site = site_name)
+#County names for pulling EPIC data
+sec_meta <- read_csv("All_metadata_08_12_24.csv")
+sec_meta$County <- sub("^(.*?)( County| Municipality| Parish)?$", 
+                       "\\1", sec_meta$County_Name)
+
+#EPIC data
+sec_epic <- read_csv("CountyCosmosPull_240815.csv") %>% 
+  select(County, `Pen-Ceph1-4MRSA`, Colistin, Carbapenems, `Pen/CephALL`, 
+         Tetracycline, Vancomycin, TotalEncounters) %>% 
+  rename(County_State = County)
 
 #Replace "10 or fewer" with 5
-sec_02_ABD_filt[sec_02_ABD_filt == "10 or fewer"] <- "5"
-sec_02_ABD_filt$Colistin <- as.numeric(sec_02_ABD_filt$Colistin)
-sec_02_ABD_filt$Carbapenems <- as.numeric(sec_02_ABD_filt$Carbapenems)
+sec_epic[sec_epic == "10 or fewer"] <- "5"
+sec_epic[c("Pen-Ceph1-4MRSA", "Colistin", "Carbapenems", "Pen/CephALL", 
+         "Tetracycline", "Vancomycin")] <- lapply(sec_epic[c("Pen-Ceph1-4MRSA", 
+                                                             "Colistin", 
+                                                             "Carbapenems", 
+                                                             "Pen/CephALL", 
+                                                             "Tetracycline", 
+                                                             "Vancomycin")], 
+                                              as.numeric)
+
+#Split county name and state 
+state_abbrev <- read_csv("states.csv")
+sec_epic <- sec_epic %>% 
+  separate(County_State, into = c("County", "State"), sep = ",") %>%
+  mutate(County = str_to_title(County),
+         State = str_trim(State) %>% str_to_upper(),
+         State = recode(State, !!!setNames(state_abbrev$State, state_abbrev$Abbreviation))) 
+
+#Merge with site names 
+sec_01_ABD_raw <- merge(sec_epic, sec_meta, 
+                        by = c("State", "County"),
+                        all.x = TRUE) %>%
+  select(-County_FIPS, -Zipcode, -Population_Served, -County_Name, -`Pen-Ceph1-4MRSA`) %>%
+  rename(site = Site_Name, 
+         city = City, 
+         state = State,
+         blactam = `Pen/CephALL`)
+
+sec_01_ABD_raw$site <- gsub("\\.", "", sec_01_ABD_raw$site)
+sec_01_ABD_raw$city <- gsub("\\.", "", sec_01_ABD_raw$city)
+
+sec_02_ABD_norm <- sec_01_ABD_raw %>% 
+  mutate(Colistin_norm = Colistin/TotalEncounters,
+         Carbapenems_norm = Carbapenems/TotalEncounters,
+         blactam_norm = blactam/TotalEncounters,
+         Tetracycline_norm = Tetracycline/TotalEncounters,
+         Vancomycin_norm = Vancomycin/TotalEncounters)
 
 #Various indicators 
-sec_01_ind_raw <- read_csv("WWSCAN_sewershed_indicators_ARG_updatedSVI.csv") %>% 
-  rename(plant = name,
-         site = site_name)
+sec_01_ind_raw <- read_csv("secondary_data_arg.csv") %>% 
+  rename(plant = name) %>%
+  select(-All_cattle, -Broiler_chicken, -Hogs)
 
 #Fixing typos and differences in site names 
 data_10_mer$city <- gsub("\\.", "", data_10_mer$city) #to match cities in other datasets
-
 
 #Animal agriculture data 
 sec_01_aa_raw <- read_csv("WWSCAN_sewershed_agriculture_v2.csv")
@@ -704,13 +749,12 @@ sec_03_aa_wide <- sec_02_aa_filt %>%
 Merge everything together to make one big data frame 
 ```{r merge_all}
 #Merge ABD with dPCR data by state 
-#data_all_1 <- merge(data_11_sum, sec_02_ABD_filt, 
-#                    by = c("plant", "city", "state", "site"), 
-#                    all.x = TRUE)
-#data_all_2 <- merge(data_all_1, sec_02_aa_filt, by = c("plant"), all.x = TRUE)
-
-data_all_2 <- merge(data_11_sum, sec_03_aa_wide, by = c("plant"), all.x = TRUE)
-data_all_3 <- merge(data_all_2, sec_01_ind_raw, by = c("site", "plant", "city", "state"), all.x = TRUE)
+data_all_1 <- merge(data_11_sum, sec_02_ABD_norm, 
+                    by = c("city", "state", "site"), 
+                    all.x = TRUE) %>%
+  select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
+data_all_2 <- merge(data_all_1, sec_03_aa_wide, by = c("plant"), all.x = TRUE)
+data_all_3 <- merge(data_all_2, sec_01_ind_raw, by = c("plant"), all.x = TRUE)
 ```
 
 ## 1.9 Combine ARG as scores to express as ARG burden
@@ -777,7 +821,7 @@ data_burden <- merge(data_burden_tot, data_burden_bla,
 
 #Re-merge with secondary data
 data_burden_mer <- merge(data_burden, sec_03_aa_wide, by = c("plant"), all.x = TRUE) %>%
-  merge(sec_01_ind_raw, by = c("site", "plant", "city", "state"), all.x = TRUE)
+  merge(sec_01_ind_raw, by = c("plant"), all.x = TRUE)
 ```
 
 These are the final data sets that we're working with so we'll export them. 
