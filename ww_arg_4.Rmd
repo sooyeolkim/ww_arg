@@ -1,0 +1,188 @@
+---
+title: "ww_arg_4"
+author: "Sooyeol Kim"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#4. Modeling
+
+The following code was used for various modeling of the data. 
+
+```{r r_setup, include=FALSE}
+#Packages 
+library("corrr") #for correlation analysis
+library(ggcorrplot) #for visualizing correlation matrix
+library("FactoMineR") #for multivariate exploratory data analysis
+library(ggplot2) #for plotting
+library("factoextra") #for visualizing outputs of PCA
+library(dplyr) #for data manipulation
+library(plotly) #for interactive plotting
+library(caret)
+library(tidyr)
+```
+
+##4.1 PCA on secondary data 
+
+First, we need to select just quantitative data that we're looking at. 
+
+```{r data_selection_sec}
+
+#Checking data structure
+str(data_burden_mer)
+
+#Select for only numerical data 
+pca_sec <- data_burden_mer %>%
+  select(-city, -state, -site, -plant, 
+         -Burden_all, -Burden_bla, -Burden_col, -Burden_van, -Burden_tet,
+         -nCT_svi, -nCT_eji, -urban_km2, -County)
+
+#Check for null values
+colSums(is.na(pca_sec))
+
+#Only using data with complete data 
+pca_sec <- pca_sec  %>% filter(complete.cases(.)) %>%
+  select(-Colistin_norm)
+
+#Normalize 
+pca_sec_norm <- scale(pca_sec)
+
+```
+
+We checked for missing values since they can bias the result of PCA. There are some missing data, especially cattle (14) and hogs (25). But since it doesn't make sense to replace missing values with estimates so removed for now (164 > 128). 
+
+Although some of the data was already normalized (by population, or in the form of index), the whole matrix was normalized in the context of this dataset for PCA. 
+
+```{r pca_sec}
+#Applying PCA
+pca_sec_res <- princomp(pca_sec_norm)
+summary(pca_sec_res)
+
+#Visualize using Scree plot
+fviz_eig(pca_sec_res, addlabels = TRUE, ncp = 20)
+
+#Visualize using biplot of attributes
+biplot_sec <- fviz_pca_var(pca_sec_res)
+ggplotly(biplot_sec)
+
+#Contribution of each variable
+fviz_cos2(pca_sec_res, choice = "var", axes = 1:2)
+
+#Biplot with cos2 
+fviz_pca_var(pca_sec_res, col.var = "cos2",
+             gardient.cols = c("black", "orange", "blue"),
+             repel = TRUE)
+
+```
+
+The first few PCs don't explain the majority of the variance in the data, which may mean that there are underlying structure of the data that's not captured by linear combinations, such as collinearity (which is to be expected since a lot of the variables measure the same thing and they did fall on similar spots in the PCA). So we'll check for collinearity between variables and pick one of the variables to continue with when the correlation is high. 
+
+```{r pca_sec_sel}
+#Checking for collinearity
+collinearity <- cor(pca_sec)
+
+#Select variables based on collinearity 
+pca_sec_sel <- pca_sec %>% select(-RPL_THEME1, -RPL_THEMES, -RPL_THEME3,
+                                  -RPL_EJI, -RPL_SER, -RPL_SVM,
+                                  -count_children, -total_hospitals, 
+                                  -count_military, -count_psychiatric,
+                                  -count_generalacutecare,
+                                  -count_nursing_home, -count_assisted_living,
+                                  -count_NA,
+                                  -E_TOTPOP, -E_HH, -E_HU,
+                                  -PROP_HISP, -PROP_LIMENG)
+
+#Recheck for collinearity
+collinearity <- cor(pca_sec_sel)
+
+#Applying PCA
+pca_sec_res2 <- princomp(pca_sec_sel)
+
+#Visualize using Scree plot
+fviz_eig(pca_sec_res2, addlabels = TRUE, ncp = 20)
+
+#Visualize using biplot of attributes
+biplot_sec <- fviz_pca_var(pca_sec_res2)
+ggplotly(biplot_sec)
+
+#Contribution of each variable
+fviz_cos2(pca_sec_res2, choice = "var", axes = 1:2)
+
+#Biplot with cos2 
+fviz_pca_var(pca_sec_res2, col.var = "cos2",
+             gardient.cols = c("black", "orange", "blue"),
+             repel = TRUE)
+```
+
+## 4.2 PCA on ARG data 
+
+```{r}
+#Make into wide dataframe 
+data_11_wide <- data_11_sum %>% 
+  ungroup() %>%
+  select(plant, target, mean_ARG_S) %>%
+  pivot_wider(names_from = target, values_from = mean_ARG_S)
+
+#Checking data structure
+str(data_11_wide)
+
+#Select for only numerical data 
+pca_ARG <- data_11_wide %>%
+  select(-plant)
+
+#Check for null values
+colSums(is.na(pca_ARG))
+
+#Only using data with complete data 
+pca_ARG <- pca_ARG  %>% filter(complete.cases(.))
+
+#Normalize 
+pca_ARG_norm <- scale(pca_ARG)
+
+#Applying PCA
+pca_ARG_res <- princomp(pca_ARG_norm)
+summary(pca_ARG_res)
+
+#Visualize using Scree plot
+fviz_eig(pca_ARG_res, addlabels = TRUE, ncp = 20)
+
+#Visualize using biplot of attributes
+fviz_pca_var(pca_ARG_res)
+
+#Contribution of each variable
+fviz_cos2(pca_ARG_res, choice = "var", axes = 1:2)
+
+#Biplot with cos2 
+fviz_pca_var(pca_ARG_res, col.var = "cos2",
+             gardient.cols = c("black", "orange", "blue"),
+             repel = TRUE)
+
+#Collinearity 
+cor(pca_ARG)
+
+cor_all <- data_burden_mer %>%
+  select(-city, -state, -site, -plant, 
+         -nCT_svi, -nCT_eji, -urban_km2, -County,
+         -RPL_THEME1, -RPL_THEMES, -RPL_THEME3,
+         -RPL_EJI, -RPL_SER, -RPL_SVM,
+         -count_children, -total_hospitals, 
+         -count_military, -count_psychiatric,
+         -count_generalacutecare,
+         -count_nursing_home, -count_assisted_living,
+         -count_NA,
+         -E_TOTPOP, -E_HH, -E_HU,
+         -PROP_HISP, -PROP_LIMENG)
+
+#Only using data with complete data 
+cor_all <- cor_all  %>% filter(complete.cases(.)) %>%
+  select(-Colistin_norm)
+
+collinearity_all <- cor(scale(cor_all))
+
+high_cor <- findCorrelation(collinearity_all, cutoff = 0.8, verbose = TRUE)
+
+```
