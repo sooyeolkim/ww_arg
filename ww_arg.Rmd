@@ -631,8 +631,8 @@ sec_epic <- read_csv("CountyCosmosPull_240815.csv") %>%
          Tetracycline, Vancomycin, TotalEncounters) %>% 
   rename(County_State = County)
 
-#Replace "10 or fewer" with 5
-sec_epic[sec_epic == "10 or fewer"] <- "5"
+#Replace "10 or fewer" with 0
+sec_epic[sec_epic == "10 or fewer"] <- "0"
 sec_epic[c("Pen-Ceph1-4MRSA", "Colistin", "Carbapenems", "Pen/CephALL", 
          "Tetracycline", "Vancomycin")] <- lapply(sec_epic[c("Pen-Ceph1-4MRSA", 
                                                              "Colistin", 
@@ -660,9 +660,11 @@ sec_01_ABD_raw <- merge(sec_epic, sec_meta,
          state = State,
          blactam = `Pen/CephALL`)
 
+#Take out punctuation from city and site names to match other datasets
 sec_01_ABD_raw$site <- gsub("\\.", "", sec_01_ABD_raw$site)
 sec_01_ABD_raw$city <- gsub("\\.", "", sec_01_ABD_raw$city)
 
+#Normalize use by total encounters
 sec_02_ABD_norm <- sec_01_ABD_raw %>% 
   mutate(Colistin_norm = Colistin/TotalEncounters,
          Carbapenems_norm = Carbapenems/TotalEncounters,
@@ -821,7 +823,11 @@ data_burden <- merge(data_burden_tot, data_burden_bla,
 
 #Re-merge with secondary data
 data_burden_mer <- merge(data_burden, sec_03_aa_wide, by = c("plant"), all.x = TRUE) %>%
-  merge(sec_01_ind_raw, by = c("plant"), all.x = TRUE)
+  merge(sec_01_ind_raw, by = c("plant"), all.x = TRUE) %>%
+  merge(sec_02_ABD_norm, 
+        by = c("city", "state", "site"), 
+        all.x = TRUE) %>%
+  select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
 ```
 
 These are the final data sets that we're working with so we'll export them. 
