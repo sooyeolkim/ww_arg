@@ -31,6 +31,10 @@ library(tidyr)
 First, we need to select just quantitative data that we're looking at. 
 
 ```{r data_selection_sec}
+#Missing animal as 0 
+data_burden_mer$`CATTLE, INCL CALVES - INVENTORY` <- data_burden_mer$`CATTLE, INCL CALVES - INVENTORY` %>% replace_na(0)
+data_burden_mer$`CHICKEN, TOTAL` <- data_burden_mer$`CHICKEN, TOTAL` %>% replace_na(0)
+data_burden_mer$`HOGS - INVENTORY` <- data_burden_mer$`HOGS - INVENTORY` %>% replace_na(0)
 
 #Checking data structure
 str(data_burden_mer)
@@ -39,7 +43,8 @@ str(data_burden_mer)
 pca_sec <- data_burden_mer %>%
   select(-city, -state, -site, -plant, 
          -Burden_all, -Burden_bla, -Burden_col, -Burden_van, -Burden_tet,
-         -nCT_svi, -nCT_eji, -urban_km2, -County)
+         -nCT_svi, -nCT_eji, -RPL_EJI, -RPL_SER, -RPL_SVM, -RPL_EBM, -RPL_HVM, 
+         -urban_km2, -County)
 
 #Check for null values
 colSums(is.na(pca_sec))
@@ -51,9 +56,27 @@ pca_sec <- pca_sec  %>% filter(complete.cases(.)) %>%
 #Normalize 
 pca_sec_norm <- scale(pca_sec)
 
+#See how facilities with small EPIC data affect our results 
+test <- data_burden_mer %>% mutate(EPIC = TotalEncounters/E_TOTPOP) %>% 
+  select(city, state, site, plant, EPIC, TotalEncounters, E_TOTPOP)
+
+test$EncounterClass <- ifelse(test$TotalEncounters < 500, "Less than 500", "500 or more")
+
+ggplot(test, aes(x = TotalEncounters/E_TOTPOP, fill = EncounterClass)) +
+  geom_histogram() + 
+  scale_x_continuous(trans = 'log10', 
+                     breaks = scales::trans_breaks("log10", function(x) 10^x), 
+                     labels = scales::trans_format("log10", scales::math_format(10^.x))) + 
+  scale_fill_manual(values = c("Less than 500" = "lightpink1", "500 or more" = "seagreen3")) +
+  labs(fill = "Total Encounters")
+
+ggplot(test, aes(x = TotalEncounters, y = E_TOTPOP)) +
+  geom_point() +
+  scale_x_continuous(trans = 'log10') +
+  scale_y_continuous(trans = 'log10')
 ```
 
-We checked for missing values since they can bias the result of PCA. There are some missing data, especially cattle (14) and hogs (25). But since it doesn't make sense to replace missing values with estimates so removed for now (164 > 128). 
+We checked for missing values since they can bias the result of PCA. There are some missing data, especially cattle (14) and hogs (25). These values were replaced with 0 since this was either no data or witheld data. The EJI columns that didn't have information for Hawaii and Alaska were also taken out, since they were measuring a lot of similar variables as the SVI anyways (164 > 163). 
 
 Although some of the data was already normalized (by population, or in the form of index), the whole matrix was normalized in the context of this dataset for PCA. 
 
@@ -68,6 +91,7 @@ fviz_eig(pca_sec_res, addlabels = TRUE, ncp = 20)
 #Visualize using biplot of attributes
 biplot_sec <- fviz_pca_var(pca_sec_res)
 ggplotly(biplot_sec)
+fviz_pca_var(pca_sec_res, axes = c(3, 4), repel = TRUE)
 
 #Contribution of each variable
 fviz_cos2(pca_sec_res, choice = "var", axes = 1:2)
@@ -79,7 +103,8 @@ fviz_pca_var(pca_sec_res, col.var = "cos2",
 
 ```
 
-The first few PCs don't explain the majority of the variance in the data, which may mean that there are underlying structure of the data that's not captured by linear combinations, such as collinearity (which is to be expected since a lot of the variables measure the same thing and they did fall on similar spots in the PCA). So we'll check for collinearity between variables and pick one of the variables to continue with when the correlation is high. 
+The first few PCs don't explain the majority of the variance in the data, which may mean that there are underlying structure of the data that's not captured by linear combinations, such as collinearity (which is to be expected since a lot of the variables measure the same thing and they did fall on similar spots in the PCA). 
+
 
 ```{r pca_sec_sel}
 #Checking for collinearity
