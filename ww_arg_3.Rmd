@@ -1,0 +1,413 @@
+---
+title: "ww_arg_3"
+author: "Sooyeol Kim"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 3. Data analysis on ARG concentrations 
+
+To be used after running the first markdown "ww_arg" which was used to produce primary and secondary datasets. 
+The following code was used to analyze the ARG concentrations measured across all sewersheds. 
+
+## 3.1 Packages needed for data analysis and plotting 
+```{r r_setup, include=FALSE}
+#Packages 
+library(dplyr) #package for data manipulation (mutate, filter, etc)
+library(ggplot2) #package for plotting 
+library(tidyr) #package for tidy data 
+library(GGally) #extension for ggplot2 for additional functionality
+library(corrplot) #package for correlation matrix
+library(conover.test) #package for conover-iman test 
+library(gridExtra) #package for arranging plots
+
+```
+
+## 3.2 Correlation among ARGs 
+
+Construct a correlation matrix to look at correlation among ARGs. First, we'll do it with individual normalized concentrations.
+
+```{r corrplot_conc, fig.width = 4, fig.height = 4}
+#Wide data frame for ARG concentrations normalized by 16S
+data_11_wide <- data_11_sum %>% 
+  select (site, plant, city, state, population, zipcode, fips, mean_ARG_S, target) %>% 
+  pivot_wider(names_from = target, values_from = mean_ARG_S) %>%
+  mutate(Total = sum(CMY, `CTX-M`, KPC, `MCR-1`, MecA, NDM, `OXA-48`, TEM, TetW, VIM, VanA, VanB))
+
+#Calculate Spearman correlation coefficients
+cor_matrix <- cor(data_11_wide[,8:20],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Total", 
+               "CMY", "CTX-M", "KPC", "MecA", "NDM", "OXA-48", "TEM", "VIM",
+               "MCR-1",
+               "TetW",
+               "VanA", "VanB")
+
+cor_matrix_reordered <- cor_matrix[cor_order, cor_order]
+
+#Correlation plot for ARG normalized by 16S
+corrplot(cor_matrix_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = c("black",
+                    "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c",
+                    "#fc9272", 
+                    "#525252", 
+                    "#31a354", "#31a354"), 
+         tl.srt = 45,
+         title = "Correlation among ARG normalized by 16S",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+
+```
+
+Looking at correlation with individual z-scores:
+
+```{r corrplot_z, fig.width = 4, fig.height = 4}
+#Wide data frame for ARG concentrations normalized by 16S
+data_all_3_wide <- data_all_3 %>% 
+  select (site, plant, city, state, population, zipcode, fips, zscore, target) %>% 
+  pivot_wider(names_from = target, values_from = zscore) %>%
+  mutate(Total = rowSums(select(., CMY, `CTX-M`, KPC, `MCR-1`, MecA, NDM, 
+                                `OXA-48`, TEM, TetW, VIM, VanA, VanB), 
+                         na.rm = TRUE))
+
+#Calculate Spearman correlation coefficients
+cor_matrix_zscore <- cor(data_all_3_wide[,8:20],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Total", 
+               "CMY", "CTX-M", "KPC", "MecA", "NDM", "OXA-48", "TEM", "VIM",
+               "MCR-1",
+               "TetW",
+               "VanA", "VanB")
+
+cor_matrix_zscore_reordered <- cor_matrix_zscore[cor_order, cor_order]
+
+#Correlation plot for ARG as zscore
+corrplot(cor_matrix_zscore_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = c("black",
+                    "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c",
+                    "#fc9272", 
+                    "#525252", 
+                    "#31a354", "#31a354"), 
+         tl.srt = 45, 
+         title = "Correlation among ARG as zscore",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+
+```
+The only difference should be correlation with total count since correlation among ARGs shouldn't be affected whether the comparison is with 16S normalized vs z-scores. 
+
+Looking at correlation when aggregated concentrations: 
+
+```{r corrplot_agg_conc, fig.width = 4, fig.height = 4}
+
+#Calculate Spearman correlation coefficients
+cor_matrix_burden_add <- cor(data_burden_add[,5:9],
+                         use = "na.or.complete",
+                         method = "spearman")
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van")
+
+cor_matrix_burden_add_reordered <- cor_matrix_burden_add[cor_order, cor_order]
+
+#Correlation plot for aggregated ARG burden
+corrplot(cor_matrix_burden_add_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = c("black", "#08519c", "#fc9272", "#525252", "#31a354"),
+         tl.srt = 45, 
+         title = "Correlation among ARG aggregated as sum of concentration",
+         mar = c(0,0,1,0),
+         cex.main = 0.8)
+
+```
+
+Looking at correlation when aggregated as z-scores: 
+
+```{r corrplot_agg_z, fig.width = 4, fig.height = 4}
+
+#Calculate Spearman correlation coefficients
+cor_matrix_burden <- cor(data_burden_mer[,5:9],
+                         use = "na.or.complete",
+                         method = "spearman")
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van")
+
+cor_matrix_burden_reordered <- cor_matrix_burden[cor_order, cor_order]
+
+#Correlation plot for aggregated ARG burden
+corrplot(cor_matrix_burden_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = c("black", "#08519c", "#fc9272", "#525252", "#31a354"), 
+         tl.srt = 45,
+         title = "Correlation among ARG aggregated as z-score",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+
+```
+
+## 3.3 Correlation between AB usage and ARG concentration
+
+Bringing in antibiotic use data to look at its relationship with ARG concentration: 
+
+```{r corrplot_ABD}
+
+#Wide data frame for variables needed 
+data_ARG_ABD <- data_burden_mer %>% 
+  select (site, plant, city, state, 
+          Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
+          Colistin_norm, Carbapenems_norm, blactam_norm, Tetracycline_norm, Vancomycin_norm) %>% 
+  mutate(ABD_tot = rowSums(select(., Colistin_norm, Carbapenems_norm, 
+                                  blactam_norm, Tetracycline_norm, 
+                                  Vancomycin_norm),
+                            na.rm = TRUE),
+         Bla_norm = rowSums(select(., blactam_norm, Carbapenems_norm), 
+                            na.rm = TRUE)) %>%
+  select(-Carbapenems_norm, -blactam_norm)
+
+#Calculate Spearman correlation coefficients
+cor_matrix_ABD_z <- cor(data_ARG_ABD[,5:14],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van",
+               "ABD_tot", "Bla_norm", "Colistin_norm", "Tetracycline_norm", "Vancomycin_norm")
+
+cor_matrix_ABD_z_reordered <- cor_matrix_ABD_z[cor_order, cor_order]
+
+#Correlation plot for ARG normalized by 16S
+corrplot(cor_matrix_ABD_z_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = c("black","#08519c","#fc9272","#525252","#31a354",
+                    "black","#08519c","#fc9272","#525252","#31a354"),
+         tl.srt = 45,
+         title = "Correlation among ARG z-score and ABD use",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+```
+
+With concentrations instead of z scores: 
+
+```{r corrplot_ABD_conc}
+
+#Wide data frame for variables needed 
+data_ARG_ABD_conc <- data_burden_add %>% 
+  select (site, plant, city, state, 
+          Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
+          Colistin_norm, Carbapenems_norm, blactam_norm, Tetracycline_norm, Vancomycin_norm) %>% 
+  mutate(ABD_tot = rowSums(select(., Colistin_norm, Carbapenems_norm, 
+                                  blactam_norm, Tetracycline_norm, 
+                                  Vancomycin_norm),
+                            na.rm = TRUE),
+         Bla_norm = rowSums(select(., blactam_norm, Carbapenems_norm), 
+                            na.rm = TRUE)) %>%
+  select(-Carbapenems_norm, -blactam_norm)
+
+#Calculate Spearman correlation coefficients
+cor_matrix_ABD_conc <- cor(data_ARG_ABD_conc[,5:14],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van",
+               "ABD_tot", "Bla_norm", "Colistin_norm", "Tetracycline_norm", "Vancomycin_norm")
+
+cor_matrix_ABD_conc_reordered <- cor_matrix_ABD_conc[cor_order, cor_order]
+
+#Correlation plot for ARG normalized by 16S
+corrplot(cor_matrix_ABD_conc_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = c("black","#08519c","#fc9272","#525252","#31a354",
+                    "black","#08519c","#fc9272","#525252","#31a354"),
+         tl.srt = 45,
+         title = "Correlation among ARG concentration and ABD use",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+```
+
+## 3.4 Geographic trends: census region
+
+Plotting distribution of ARGs by census regions: 
+
+```{r geo_dist}
+#Distribution when normalized by 16S 
+ggplot(data_all_3, aes(x = target, y = mean_ARG_S, fill = Region)) + 
+  geom_jitter(color = "darkgrey", size = 0.5, alpha = 0.9) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  scale_y_continuous(trans = 'log10') + 
+  scale_shape_manual(values = c(19, 1)) +
+  ylab("Conc (-)") + 
+  theme_bw() +
+  labs(title = "ARG distribution normalized by 16S")
+
+#Total ARG burden when concentrations are summed 
+plot_burden_all_conc <- 
+  ggplot(data_burden_add, aes(x = Region, y = Burden_all, fill = Region)) + 
+  geom_jitter(color = "darkgrey", size = 0.5, alpha = 0.9) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  scale_y_continuous(trans = 'log10') + 
+  scale_shape_manual(values = c(19, 1)) +
+  ylab("Normalized ARG Concentration Summed") + 
+  theme_bw() +
+  labs(title = "Total ARG burden")
+
+#Total ARG burden when z-scores are summed
+
+plot_burden_all_z <- 
+  ggplot(data_burden_mer, aes(x = Region, y = Burden_all, fill = Region)) + 
+  geom_jitter(color = "darkgrey", size = 0.5, alpha = 0.9) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  scale_shape_manual(values = c(19, 1)) +
+  ylab("Summed z-score") + 
+  theme_bw() + 
+  labs(title = "Total ARG burden")
+
+grid.arrange(plot_burden_all_conc, plot_burden_all_z, ncol = 2)
+
+#Bla burden 
+  ggplot(data_burden_add, aes(x = Region, y = Burden_bla, fill = Region)) + 
+  geom_jitter(color = "darkgrey", size = 0.5, alpha = 0.9) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  scale_y_continuous(trans = 'log10') + 
+  scale_shape_manual(values = c(19, 1)) +
+  ylab("Summed concentration") + 
+  theme_bw() + 
+  labs(title = "Beta lactamase ARG burden")
+
+```
+
+We can do a Kruskal-Wallis test to see if there is a significant difference in at least one of the groups. 
+
+```{r geo_kw}
+#Kruskal-Wallis test for each ARG
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "CMY"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "CTX-M"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "KPC"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "MCR-1"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "MecA"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "NDM"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "OXA-48"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "TEM"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "TetW"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "VanA"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "VanB"))
+kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "VIM"))
+
+#Kruskal wallis on overall ARG burden of the region 
+kruskal.test(Burden_all ~ Region, data = data_burden_add)
+kruskal.test(Burden_all ~ Region, data = data_burden_mer)
+
+#Kruskal wallis on different class of antibiotic resistance burden of the region
+kruskal.test(Burden_bla ~ Region, data = data_burden_mer)
+kruskal.test(Burden_van ~ Region, data = data_burden_mer)
+
+kruskal.test(Burden_bla ~ Region, data = data_burden_add)
+kruskal.test(Burden_van ~ Region, data = data_burden_add)
+```
+
+Kruskal-Wallis shows that mecA, TetW, VanB, VIM is not statistically different (p > 0.05) but the rest are statistically different (p < 0.05).
+
+```{r geo_conover}
+#Conover Iman posthoc test
+conover.test(subset(data_all_3, target == "CMY")$mean_ARG_S, 
+             subset(data_all_3, target == "CMY")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "CTX-M")$mean_ARG_S, 
+             subset(data_all_3, target == "CTX-M")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "KPC")$mean_ARG_S, 
+             subset(data_all_3, target == "KPC")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "MCR-1")$mean_ARG_S, 
+             subset(data_all_3, target == "MCR-1")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "NDM")$mean_ARG_S, 
+             subset(data_all_3, target == "NDM")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "OXA-48")$mean_ARG_S, 
+             subset(data_all_3, target == "OXA-48")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "TEM")$mean_ARG_S, 
+             subset(data_all_3, target == "TEM")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_all_3, target == "VanA")$mean_ARG_S, 
+             subset(data_all_3, target == "VanA")$Region,
+             method = "Bonferroni")
+
+conover.test(data_burden_add$Burden_all, data_burden_add$Region, 
+             method = "Bonferroni")
+
+conover.test(data_burden_mer$Burden_bla, data_burden_mer$Region,
+             method = "Bonferroni")
+
+conover.test(data_burden_add$Burden_bla, data_burden_add$Region,
+             method = "Bonferroni")
+
+```
+
+Looking at geographical trends of ARD use 
+```{r}
+
+#Reformating data frame 
+data_ABD_use <- data_ARG_ABD_conc %>% 
+  pivot_longer(cols = Colistin_norm:Bla_norm, 
+               names_to = "ABD_Class",
+               values_to = "ABD_Use") %>% 
+  rename(State = state) %>%
+  merge(state_abbrev, by = c("State")) %>%
+  select(-`State Code`)
+
+#Antibiotic use by geographic region
+ggplot(data_ABD_use, aes(x = ABD_Class, y = ABD_Use, fill = Region)) + 
+  geom_jitter(color = "darkgrey", size = 0.5, alpha = 0.9) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  scale_y_continuous(trans = 'log10') + 
+  scale_shape_manual(values = c(19, 1)) +
+  ylab("Proportion of prescription") + 
+  theme_bw() +
+  labs(title = "Antibiotic use by geographic region")
+```
+
+```{r abd_kw}
+#Kruskal-Wallis test for each ABD class
+kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "ABD_tot"))
+kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "Bla_norm"))
+kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "Tetracycline_norm"))
+kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "Vancomycin_norm"))
+
+#Conover-iman posthoc test
+conover.test(subset(data_ABD_use, ABD_Class == "ABD_tot")$ABD_Use, 
+             subset(data_ABD_use, ABD_Class == "ABD_tot")$Region,
+             method = "Bonferroni")
+
+conover.test(subset(data_ABD_use, ABD_Class == "Bla_norm")$ABD_Use, 
+             subset(data_ABD_use, ABD_Class == "Bla_norm")$Region,
+             method = "Bonferroni")
+
+```

@@ -358,6 +358,17 @@ dim(data_06_EVA_filt)
 
 There were 122 measurements that were rerun in the ARG data frame (total of 244 measurements). Choosing one of the measurements based on the confidence interval range, the dimension of the data frame is now 5369 x 19. For EVA assays, there were 8 measurements that were rerun (total of 16 measurements). Choosing one of the measurements based on the resulting concentration, the dimension of the data frame is 885 x 14. 
 
+We'll also take out the measurement from UC Davis since its data isn't going to be used. 
+
+```{r UC}
+data_06_ARG_filt <- subset(data_06_ARG_filt, plant != "UC Davis")
+data_06_EVA_filt <- subset(data_06_EVA_filt, plant != "UC Davis")
+
+dim(data_06_EVA_filt)
+dim(data_06_ARG_filt)
+
+```
+
 Now that we've selected our final set of data, we'll also calculate the lower measurement limit for each sample and substitute any non-detects with half of the lower measurement limit. Not done for the EVA data frame since no measurements were non-detects. 
 
 ```{r data_calculate}
@@ -383,7 +394,7 @@ Let's look at the primary data that we have currently before linking them up wit
 Calculating summary stats about ARG data as a whole. 
 ```{r ARG_summary}
 #Merge data with metadata
-data_08_ARG_mer <- merge(data_07_ARG_calc, data_02_met_mod, by = c("sample_id"), all = TRUE) %>% filter(!is.na(site))
+data_08_ARG_mer <- merge(data_07_ARG_calc, data_02_met_mod, by = c("sample_id"), all.x = TRUE) %>% filter(!is.na(site))
 
 #Summarize data 
 data_08_ARG_sum <- data_08_ARG_mer %>% 
@@ -408,7 +419,7 @@ setdiff(unique(data_07_ARG_calc$sample_id), unique(data_08_ARG_mer$sample_id))
 
 ```
 
-After QA/QC, we have 446 samples and 5345 measurements that represent 164 plants in 40 states and 134 cities in the US. This is excluding the 2 samples from site 87 that Dora said should be excluded because they don't get exported (87-240519, 87-240521). 
+After QA/QC, we have 443 samples and 5309 measurements that represent 163 plants in 40 states and 134 cities in the US. This is excluding the 2 samples from site 87 that Dora said should be excluded because they don't get exported (87-240519, 87-240521). 
 
 Plotting the distribution of ARGs for each target: 
 
@@ -510,8 +521,8 @@ print(rosner_16S)
 print(rosner_rpoB)
 
 #Taking out outliers identified by Rosner's 
-data_09_EVA_16S <- data_08_EVA_16S[-c(249),]
-data_09_EVA_rpoB <- data_08_EVA_rpoB[-c(22, 251, 24, 23),]
+data_09_EVA_16S <- data_08_EVA_16S[-c(247),]
+data_09_EVA_rpoB <- data_08_EVA_rpoB[-c(22, 248, 24, 23),]
 
 data_09_EVA <- rbind(data_09_EVA_16S, data_09_EVA_rpoB)
 
@@ -525,7 +536,7 @@ qqline(log10(data_09_EVA_16S$dry_gc_g))
 qqnorm(log10(data_09_EVA_rpoB$dry_gc_g))
 qqline(log10(data_09_EVA_rpoB$dry_gc_g))
 ```
-With Rosner's test on the log-transformed data, we identified one outlier (index = 249: 23-240517) that's the lowest point in 16S distribution and four outliers (index = 22: 107-240520, 251: 23-240517, 24: 107-240523, 23: 107-240522) that's the lowest four points in rpoB distribution. 
+With Rosner's test on the log-transformed data, we identified one outlier (index = 247: 23-240517) that's the lowest point in 16S distribution and four outliers (index = 22: 107-240520, 248: 23-240517, 24: 107-240523, 23: 107-240522) that's the lowest four points in rpoB distribution. 
 
 Taking those points out, it still does not make the distribution normal by shapiro-wilk but we'll take them out for future analysis.  
 
@@ -558,7 +569,7 @@ lm_EVA <- lm(dry_gc_g_S ~ dry_gc_g_B, data = data_09_EVA_SB)
 summary(lm_EVA)
 ```
 
-The linear regression between 16S vs rpoB shows that there is a significant relationship (p-value <2.2e-16) with R2 value of 0.78. The relationship can be described as y = 67.6x - 4.12e11 with both slope and intercept being statistically significant. 
+The linear regression between 16S vs rpoB shows that there is a significant relationship (p-value <2.2e-16) with R2 value of 0.78. The relationship can be described as y = 67.6x - 4.14e11 with both slope and intercept being statistically significant. 
 
 We'll also look at the distribution normalized by 16S and rpoB. 
 
@@ -648,7 +659,9 @@ sec_epic <- sec_epic %>%
   separate(County_State, into = c("County", "State"), sep = ",") %>%
   mutate(County = str_to_title(County),
          State = str_trim(State) %>% str_to_upper(),
-         State = recode(State, !!!setNames(state_abbrev$State, state_abbrev$Abbreviation))) 
+         State = recode(State, !!!setNames(state_abbrev$State, state_abbrev$`State Code`))) %>% 
+  merge(state_abbrev, by = c("State")) %>%
+  select(-`State Code`)
 
 #Merge with site names 
 sec_01_ABD_raw <- merge(sec_epic, sec_meta, 
@@ -675,7 +688,9 @@ sec_02_ABD_norm <- sec_01_ABD_raw %>%
 #Various indicators 
 sec_01_ind_raw <- read_csv("secondary_data_arg.csv") %>% 
   rename(plant = name) %>%
-  select(-All_cattle, -Broiler_chicken, -Hogs)
+  select(-All_cattle, -Broiler_chicken, -Hogs,
+         #Taking out themes since we have individual components as variables PROP_
+         -RPL_THEMES, -RPL_THEME1, -RPL_THEME2, -RPL_THEME3, -RPL_THEME4)
 
 #Fixing typos and differences in site names 
 data_10_mer$city <- gsub("\\.", "", data_10_mer$city) #to match cities in other datasets
@@ -830,6 +845,66 @@ data_burden_mer <- merge(data_burden, sec_03_aa_wide, by = c("plant"), all.x = T
   select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
 ```
 
+ARG burden is also often expressed as raw sum of concentrations so relevant ARG concentrations were added. 
+
+```{r totalConcAdded}
+
+#Assigning overall ARG burden 
+data_burden_add <- data_all_3 %>% 
+  group_by(site, plant, city, state) %>%
+  summarise(Burden_all = sum(mean_ARG_S)) 
+
+#Combining class of antibiotics 
+#Betalactamase: CMY, CTX-M, KPC, mecA, NDM, OXA-48, TEM, VIM
+data_burden_bla_add <- data_all_3 %>% 
+  subset(target == "CMY" | target == "CTX-M" | 
+         target == "KPC" | target == "MecA" | target == "NDM" |
+         target == "OXA-48" | target == "TEM" | target == "VIM") %>%
+  group_by(site, plant, city, state) %>%
+  summarise(Burden_bla = sum(mean_ARG_S)) 
+
+#Colistin: mcr-1
+data_burden_col_add <- data_all_3 %>% 
+  subset(target == "MCR-1") %>%
+  group_by(site, plant, city, state) %>%
+  summarise(Burden_col = sum(mean_ARG_S)) 
+
+#Vancomycin: vanA, vanB
+data_burden_van_add <- data_all_3 %>% 
+  subset(target == "VanA" | target == "VanB") %>%
+  group_by(site, plant, city, state) %>%
+  summarise(Burden_van = sum(mean_ARG_S)) 
+
+#Tetracycline: tetW 
+data_burden_tet_add <- data_all_3 %>% 
+  subset(target == "TetW") %>%
+  group_by(site, plant, city, state) %>%
+  summarise(Burden_tet = sum(mean_ARG_S)) 
+
+#Putting everything together
+data_burden_add <- merge(data_burden_add, data_burden_bla_add, 
+                     by = c("site", "plant", "city", "state"),
+                     all = TRUE) %>%
+  merge(data_burden_col_add,
+        by = c("site", "plant", "city", "state"),
+        all = TRUE) %>%
+  merge(data_burden_van_add, 
+        by = c("site", "plant", "city", "state"),
+        all = TRUE) %>% 
+  merge(data_burden_tet_add,
+        by = c("site", "plant", "city", "state"),
+        all = TRUE)
+
+#Re-merge with secondary data
+data_burden_add <- merge(data_burden_add, sec_03_aa_wide, by = c("plant"), all.x = TRUE) %>%
+  merge(sec_01_ind_raw, by = c("plant"), all.x = TRUE) %>%
+  merge(sec_02_ABD_norm, 
+        by = c("city", "state", "site"), 
+        all.x = TRUE) %>%
+  select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
+
+```
+
 These are the final data sets that we're working with so we'll export them. 
 
 ```{r data_export}
@@ -838,4 +913,5 @@ write.csv(data_10_mer, "dPCR_data_final.csv", row.names = FALSE)
 write.csv(data_11_sum, "dPCR_data_averaged.csv", row.names = FALSE)
 write.csv(data_all_3, "data_all.csv", row.names = FALSE)
 write.csv(data_burden_mer, "data_ARGburden.csv", row.names = FALSE)
+write.csv(data_burden_add, "data_ARGburden_Conc.csv", row.names = FALSE)
 ```

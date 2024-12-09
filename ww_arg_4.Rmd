@@ -41,7 +41,7 @@ str(data_burden_mer)
 
 #Select for only numerical data 
 pca_sec <- data_burden_mer %>%
-  select(-city, -state, -site, -plant, 
+  select(-city, -state, -site, -plant, -Region, -Division,
          -Burden_all, -Burden_bla, -Burden_col, -Burden_van, -Burden_tet,
          -nCT_svi, -nCT_eji, -RPL_EJI, -RPL_SER, -RPL_SVM, -RPL_EBM, -RPL_HVM, 
          -urban_km2, -County)
@@ -76,7 +76,7 @@ ggplot(test, aes(x = TotalEncounters, y = E_TOTPOP)) +
   scale_y_continuous(trans = 'log10')
 ```
 
-We checked for missing values since they can bias the result of PCA. There are some missing data, especially cattle (14) and hogs (25). These values were replaced with 0 since this was either no data or witheld data. The EJI columns that didn't have information for Hawaii and Alaska were also taken out, since they were measuring a lot of similar variables as the SVI anyways (164 > 163). 
+We checked for missing values since they can bias the result of PCA. There are some missing data, especially cattle (14) and hogs (25). These values were replaced with 0 since this was either no data or witheld data. The EJI columns that didn't have information for Hawaii and Alaska were also taken out, since they were measuring a lot of similar variables as the SVI anyways (163 > 162). 
 
 Although some of the data was already normalized (by population, or in the form of index), the whole matrix was normalized in the context of this dataset for PCA. 
 
@@ -105,42 +105,11 @@ fviz_pca_var(pca_sec_res, col.var = "cos2",
 
 The first few PCs don't explain the majority of the variance in the data, which may mean that there are underlying structure of the data that's not captured by linear combinations, such as collinearity (which is to be expected since a lot of the variables measure the same thing and they did fall on similar spots in the PCA). 
 
+Using FAMD on the data - turn variables into categorical
+```{r}
+#Number of hospitals 
 
-```{r pca_sec_sel}
-#Checking for collinearity
-collinearity <- cor(pca_sec)
 
-#Select variables based on collinearity 
-pca_sec_sel <- pca_sec %>% select(-RPL_THEME1, -RPL_THEMES, -RPL_THEME3,
-                                  -RPL_EJI, -RPL_SER, -RPL_SVM,
-                                  -count_children, -total_hospitals, 
-                                  -count_military, -count_psychiatric,
-                                  -count_generalacutecare,
-                                  -count_nursing_home, -count_assisted_living,
-                                  -count_NA,
-                                  -E_TOTPOP, -E_HH, -E_HU,
-                                  -PROP_HISP, -PROP_LIMENG)
-
-#Recheck for collinearity
-collinearity <- cor(pca_sec_sel)
-
-#Applying PCA
-pca_sec_res2 <- princomp(pca_sec_sel)
-
-#Visualize using Scree plot
-fviz_eig(pca_sec_res2, addlabels = TRUE, ncp = 20)
-
-#Visualize using biplot of attributes
-biplot_sec <- fviz_pca_var(pca_sec_res2)
-ggplotly(biplot_sec)
-
-#Contribution of each variable
-fviz_cos2(pca_sec_res2, choice = "var", axes = 1:2)
-
-#Biplot with cos2 
-fviz_pca_var(pca_sec_res2, col.var = "cos2",
-             gardient.cols = c("black", "orange", "blue"),
-             repel = TRUE)
 ```
 
 ## 4.2 PCA on ARG data 
