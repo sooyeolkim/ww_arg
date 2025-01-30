@@ -24,6 +24,7 @@ library(GGally) #extension for ggplot2 for additional functionality
 library(corrplot) #package for correlation matrix
 library(conover.test) #package for conover-iman test 
 library(gridExtra) #package for arranging plots
+library(stats) #package for p-value corrections
 
 ```
 
@@ -43,6 +44,16 @@ cor_matrix <- cor(data_11_wide[,8:20],
                   use = "na.or.complete",
                   method = "spearman")
 
+p_matrix <- cor.mtest(data_11_wide[,8:20],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p 
+
+p_adj <- p.adjust(p_matrix, method = "BH")
+
+p_matrix_adj <- matrix(p_adj, nrow = nrow(p_matrix), ncol = ncol(p_matrix),
+                       dimnames= dimnames(p_matrix))
+
 #Order of ARGs in the correlation plot
 cor_order <- c("Total", 
                "CMY", "CTX-M", "KPC", "MecA", "NDM", "OXA-48", "TEM", "VIM",
@@ -51,6 +62,8 @@ cor_order <- c("Total",
                "VanA", "VanB")
 
 cor_matrix_reordered <- cor_matrix[cor_order, cor_order]
+
+p_matrix_reordered <- p_matrix_adj[cor_order, cor_order, drop = FALSE]
 
 #Correlation plot for ARG normalized by 16S
 corrplot(cor_matrix_reordered,
@@ -62,6 +75,12 @@ corrplot(cor_matrix_reordered,
                     "#525252", 
                     "#31a354", "#31a354"), 
          tl.srt = 45,
+         p.mat = p_matrix_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         diag = FALSE, 
          title = "Correlation among ARG normalized by 16S",
          mar = c(0,0,2,0),
          cex.main = 0.8)
@@ -84,6 +103,17 @@ cor_matrix_zscore <- cor(data_all_3_wide[,8:20],
                   use = "na.or.complete",
                   method = "spearman")
 
+p_matrix_zscore <- cor.mtest(data_all_3_wide[,8:20],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_adj_zscore <- p.adjust(p_matrix_zscore, method = "BH")
+
+p_matrix_adj_zscore <- matrix(p_adj_zscore, nrow = nrow(p_matrix_zscore), 
+                              ncol = ncol(p_matrix_zscore),
+                              dimnames= dimnames(p_matrix_zscore))
+
 #Order of ARGs in the correlation plot
 cor_order <- c("Total", 
                "CMY", "CTX-M", "KPC", "MecA", "NDM", "OXA-48", "TEM", "VIM",
@@ -93,19 +123,28 @@ cor_order <- c("Total",
 
 cor_matrix_zscore_reordered <- cor_matrix_zscore[cor_order, cor_order]
 
+p_matrix_zscore_reordered <- p_matrix_adj_zscore[cor_order, cor_order, drop = FALSE]
+
 #Correlation plot for ARG as zscore
+pdf("Fig_ARG_Corr.pdf")
 corrplot(cor_matrix_zscore_reordered,
          method = "ellipse",
-         type = "upper",
+         type = "lower",
          tl.col = c("black",
                     "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c",
                     "#fc9272", 
                     "#525252", 
                     "#31a354", "#31a354"), 
-         tl.srt = 45, 
+         tl.srt = 45,
+         p.mat = p_matrix_zscore_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
          title = "Correlation among ARG as zscore",
          mar = c(0,0,2,0),
          cex.main = 0.8)
+dev.off()
 
 ```
 The only difference should be correlation with total count since correlation among ARGs shouldn't be affected whether the comparison is with 16S normalized vs z-scores. 
@@ -119,10 +158,23 @@ cor_matrix_burden_add <- cor(data_burden_add[,5:9],
                          use = "na.or.complete",
                          method = "spearman")
 
+p_matrix_burden_add <- cor.mtest(data_burden_add[,5:9],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_adj_burden_add <- p.adjust(p_matrix_burden_add, method = "BH")
+
+p_matrix_adj_burden_add <- matrix(p_adj_burden_add, nrow = nrow(p_matrix_burden_add), 
+                              ncol = ncol(p_matrix_burden_add),
+                              dimnames= dimnames(p_matrix_burden_add))
+
 #Order of ARGs in the correlation plot
 cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van")
 
 cor_matrix_burden_add_reordered <- cor_matrix_burden_add[cor_order, cor_order]
+
+p_matrix_burden_add_reordered <- p_matrix_adj_burden_add[cor_order, cor_order]
 
 #Correlation plot for aggregated ARG burden
 corrplot(cor_matrix_burden_add_reordered,
@@ -130,9 +182,15 @@ corrplot(cor_matrix_burden_add_reordered,
          type = "upper",
          tl.col = c("black", "#08519c", "#fc9272", "#525252", "#31a354"),
          tl.srt = 45, 
+         p.mat = p_matrix_burden_add_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
          title = "Correlation among ARG aggregated as sum of concentration",
          mar = c(0,0,1,0),
          cex.main = 0.8)
+
 
 ```
 
@@ -145,21 +203,40 @@ cor_matrix_burden <- cor(data_burden_mer[,5:9],
                          use = "na.or.complete",
                          method = "spearman")
 
+p_matrix_burden <- cor.mtest(data_burden_mer[,5:9],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_adj_burden <- p.adjust(p_matrix_burden, method = "BH")
+
+p_matrix_adj_burden <- matrix(p_adj_burden, nrow = nrow(p_matrix_burden), 
+                              ncol = ncol(p_matrix_burden),
+                              dimnames= dimnames(p_matrix_burden))
+
 #Order of ARGs in the correlation plot
 cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van")
 
 cor_matrix_burden_reordered <- cor_matrix_burden[cor_order, cor_order]
 
+p_matrix_burden_reordered <- p_matrix_adj_burden[cor_order, cor_order]
+
 #Correlation plot for aggregated ARG burden
+#pdf("Fig_ARB_Corr.pdf")
 corrplot(cor_matrix_burden_reordered,
          method = "ellipse",
          type = "upper",
          tl.col = c("black", "#08519c", "#fc9272", "#525252", "#31a354"), 
          tl.srt = 45,
+         p.mat = p_matrix_burden_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
          title = "Correlation among ARG aggregated as z-score",
          mar = c(0,0,2,0),
          cex.main = 0.8)
-
+#dev.off()
 ```
 
 ## 3.3 Correlation between AB usage and ARG concentration
@@ -170,10 +247,10 @@ Bringing in antibiotic use data to look at its relationship with ARG concentrati
 
 #Wide data frame for variables needed 
 data_ARG_ABD <- data_burden_mer %>% 
-  select (site, plant, city, state, 
+  select (site, plant, city, state, Region, 
           Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
-          Colistin_norm, Carbapenems_norm, blactam_norm, Tetracycline_norm, Vancomycin_norm) %>% 
-  mutate(ABD_tot = rowSums(select(., Colistin_norm, Carbapenems_norm, 
+          Carbapenems_norm, blactam_norm, Tetracycline_norm, Vancomycin_norm) %>% 
+  mutate(ABD_tot = rowSums(select(., Carbapenems_norm, 
                                   blactam_norm, Tetracycline_norm, 
                                   Vancomycin_norm),
                             na.rm = TRUE),
@@ -182,26 +259,48 @@ data_ARG_ABD <- data_burden_mer %>%
   select(-Carbapenems_norm, -blactam_norm)
 
 #Calculate Spearman correlation coefficients
-cor_matrix_ABD_z <- cor(data_ARG_ABD[,5:14],
+cor_matrix_ABD_z <- cor(data_ARG_ABD[,6:14],
                   use = "na.or.complete",
                   method = "spearman")
 
+p_matrix_ABD_z <- cor.mtest(data_ARG_ABD[,6:14],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_adj_ABD_z <- p.adjust(p_matrix_ABD_z, method = "BH")
+
+p_matrix_adj_ABD_z <- matrix(p_adj_ABD_z, nrow = nrow(p_matrix_ABD_z), 
+                              ncol = ncol(p_matrix_ABD_z),
+                              dimnames= dimnames(p_matrix_ABD_z))
+
 #Order of ARGs in the correlation plot
 cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van",
-               "ABD_tot", "Bla_norm", "Colistin_norm", "Tetracycline_norm", "Vancomycin_norm")
+               "ABD_tot", "Bla_norm", "Tetracycline_norm", "Vancomycin_norm")
 
 cor_matrix_ABD_z_reordered <- cor_matrix_ABD_z[cor_order, cor_order]
 
-#Correlation plot for ARG normalized by 16S
+p_matrix_ABD_z_reordered <- p_matrix_adj_ABD_z[cor_order, cor_order]
+
+#Correlation plot for ARG as z-scores
+pdf("Fig_ARBABD_Corr.pdf")
 corrplot(cor_matrix_ABD_z_reordered,
          method = "ellipse",
          type = "upper",
          tl.col = c("black","#08519c","#fc9272","#525252","#31a354",
                     "black","#08519c","#fc9272","#525252","#31a354"),
          tl.srt = 45,
+         p.mat = p_matrix_ABD_z_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         diag = FALSE, 
          title = "Correlation among ARG z-score and ABD use",
          mar = c(0,0,2,0),
          cex.main = 0.8)
+dev.off()
+
 ```
 
 With concentrations instead of z scores: 
@@ -212,8 +311,8 @@ With concentrations instead of z scores:
 data_ARG_ABD_conc <- data_burden_add %>% 
   select (site, plant, city, state, 
           Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
-          Colistin_norm, Carbapenems_norm, blactam_norm, Tetracycline_norm, Vancomycin_norm) %>% 
-  mutate(ABD_tot = rowSums(select(., Colistin_norm, Carbapenems_norm, 
+          Carbapenems_norm, blactam_norm, Tetracycline_norm, Vancomycin_norm) %>% 
+  mutate(ABD_tot = rowSums(select(., Carbapenems_norm, 
                                   blactam_norm, Tetracycline_norm, 
                                   Vancomycin_norm),
                             na.rm = TRUE),
@@ -222,15 +321,27 @@ data_ARG_ABD_conc <- data_burden_add %>%
   select(-Carbapenems_norm, -blactam_norm)
 
 #Calculate Spearman correlation coefficients
-cor_matrix_ABD_conc <- cor(data_ARG_ABD_conc[,5:14],
+cor_matrix_ABD_conc <- cor(data_ARG_ABD_conc[,5:13],
                   use = "na.or.complete",
                   method = "spearman")
 
+p_matrix_ABD_conc <- cor.mtest(data_ARG_ABD_conc[,5:13],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_adj_ABD_conc <- p.adjust(p_matrix_ABD_conc, method = "BH")
+
+p_matrix_adj_ABD_conc <- matrix(p_adj_ABD_conc, nrow = nrow(p_matrix_ABD_conc), 
+                              ncol = ncol(p_matrix_ABD_conc),
+                              dimnames= dimnames(p_matrix_ABD_conc))
+
 #Order of ARGs in the correlation plot
 cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van",
-               "ABD_tot", "Bla_norm", "Colistin_norm", "Tetracycline_norm", "Vancomycin_norm")
+               "ABD_tot", "Bla_norm", "Tetracycline_norm", "Vancomycin_norm")
 
 cor_matrix_ABD_conc_reordered <- cor_matrix_ABD_conc[cor_order, cor_order]
+p_matrix_ABD_conc_reordered <- p_matrix_adj_ABD_conc[cor_order, cor_order]
 
 #Correlation plot for ARG normalized by 16S
 corrplot(cor_matrix_ABD_conc_reordered,
@@ -239,12 +350,329 @@ corrplot(cor_matrix_ABD_conc_reordered,
          tl.col = c("black","#08519c","#fc9272","#525252","#31a354",
                     "black","#08519c","#fc9272","#525252","#31a354"),
          tl.srt = 45,
+         p.mat = p_matrix_ABD_conc_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         diag = FALSE, 
          title = "Correlation among ARG concentration and ABD use",
          mar = c(0,0,2,0),
          cex.main = 0.8)
 ```
+## 3.4 Correlation between other variables and ARG concenetration
 
-## 3.4 Geographic trends: census region
+Looking at correlation with other variables as well.
+
+```{r corrplot_animal}
+
+#Wide data frame for variables needed 
+data_ARG_animal <- data_burden_mer %>% 
+  select (site, plant, city, state, 
+          Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
+          'CATTLE, INCL CALVES - INVENTORY', 'CHICKEN, TOTAL', 'HOGS - INVENTORY') %>% 
+  mutate(Animal_tot = rowSums(select(., 'CATTLE, INCL CALVES - INVENTORY', 
+                                  'CHICKEN, TOTAL', 'HOGS - INVENTORY'),
+                            na.rm = TRUE))
+
+#Calculate Spearman correlation coefficients
+cor_matrix_animal_z <- cor(data_ARG_animal[,5:13],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+p_matrix_animal_z <- cor.mtest(data_ARG_animal[,5:13],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+#Order of ARGs in the correlation plot
+cor_order <- c("Burden_all", "Burden_bla", "Burden_col", "Burden_tet", "Burden_van",
+               "CATTLE, INCL CALVES - INVENTORY", "CHICKEN, TOTAL", "HOGS - INVENTORY", "Animal_tot")
+
+cor_matrix_animal_z_reordered <- cor_matrix_animal_z[cor_order, cor_order]
+
+p_matrix_animal_z_reordered <- p_matrix_animal_z[cor_order, cor_order]
+
+#Correlation plot for ARG as z-scores
+pdf("Fig_ARBanimal_Corr.pdf")
+corrplot(cor_matrix_animal_z_reordered,
+         method = "ellipse",
+         type = "upper",
+         tl.col = "black",
+         tl.srt = 45,
+         p.mat = p_matrix_animal_z_reordered,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         title = "Correlation among ARG z-score and animal inventory",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+dev.off()
+
+```
+
+```{r corrplot_svi}
+
+#Wide data frame for variables needed 
+data_ARG_svi <- data_burden_mer %>% 
+  select (site, plant, city, state, 
+          Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
+          PROP_POV150, PROP_UNEMP, PROP_HBURD, PROP_NOHSDP, PROP_UNINSUR,
+          PROP_AGE65, PROP_AGE17, PROP_DISABL, PROP_SNGPNT, PROP_LIMENG,
+          PROP_MINRTY, PROP_ASIAN, PROP_AIAN, PROP_NHPI, PROP_TWOMORE,
+          PROP_OTHERRACE, PROP_MUNIT, PROP_MOBILE, PROP_CROWD, PROP_NOVEH,
+          PROP_GROUPQ, PROP_NOINT)
+
+#Calculate Spearman correlation coefficients
+cor_matrix_svi_z <- cor(data_ARG_svi[,5:31],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+p_matrix_svi_z <- cor.mtest(data_ARG_svi[,5:31],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+#Correlation plot for ARG as z-scores
+pdf("Fig_ARBsvi_Corr.pdf")
+corrplot(cor_matrix_svi_z,
+         method = "ellipse",
+         type = "lower",
+         tl.col = "black",
+         tl.srt = 45,
+         p.mat = p_matrix_svi_z,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         title = "Correlation among ARG z-score and social vulnerability index",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+dev.off()
+
+```
+
+```{r corrplot_combined}
+
+#Wide data frame for variables needed 
+data_ARG_all <- merge(data_ARG_ABD, data_ARG_animal, 
+                      by = c("site", "plant", "city", "state",  
+                             "Burden_all", "Burden_bla", "Burden_col", "Burden_van", "Burden_tet")) %>%
+  merge(data_ARG_svi, 
+        by = c("site", "plant", "city", "state", 
+               "Burden_all", "Burden_bla", "Burden_col", "Burden_van", "Burden_tet")) %>% 
+  select(-Region) %>% 
+  merge(select(data_burden_mer, site, plant, city, state, 
+               urban_prop, total_hospitals, total_nursing, total_airports),
+        by = c("site", "plant", "city", "state")) %>%
+  select(-PROP_AIAN, -PROP_TWOMORE, -PROP_OTHERRACE, -PROP_MUNIT, -PROP_GROUPQ)
+
+#Calculate Spearman correlation coefficients
+cor_matrix_all_z <- cor(data_ARG_all[,5:38],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+p_matrix_all_z <- cor.mtest(data_ARG_all[,5:38],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_adj_all_z <- p.adjust(p_matrix_all_z, method = "BH")
+
+p_matrix_adj_all_z <- matrix(p_adj_all_z, nrow = nrow(p_matrix_all_z), 
+                              ncol = ncol(p_matrix_all_z),
+                              dimnames= dimnames(p_matrix_all_z))
+
+#Correlation plot for ARG as z-scores
+pdf("Fig_ARBall_Corr.pdf")
+corrplot(cor_matrix_all_z,
+         method = "ellipse",
+         type = "lower",
+         tl.col = "black",
+         tl.srt = 45,
+         p.mat = p_matrix_adj_all_z,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         title = "Correlation among ARG z-score and secondary dataset",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+dev.off()
+
+data_ARG_sel <- data_ARG_all %>% 
+  select(-PROP_AIAN, -PROP_TWOMORE, -PROP_OTHERRACE, -PROP_MUNIT, -PROP_GROUPQ)
+
+#Calculate Spearman correlation coefficients
+cor_matrix_sel_z <- cor(data_ARG_sel[,5:27],
+                  use = "na.or.complete",
+                  method = "spearman")
+
+p_matrix_sel_z <- cor.mtest(data_ARG_sel[,5:27],
+                  use = "na.or.complete",
+                  method = "spearman",
+                  conf.level = 0.95)$p
+
+p_sel_adj_z <- p.adjust(p_matrix_sel_z, method = "BH")
+
+p_matrix_adj_sel_z <- matrix(p_sel_adj_z, nrow = nrow(p_matrix_sel_z), 
+                              ncol = ncol(p_matrix_sel_z),
+                              dimnames= dimnames(p_matrix_sel_z))
+
+#Correlation plot for ARG as z-scores
+pdf("Fig_ARBall_Corr.pdf")
+corrplot(cor_matrix_sel_z,
+         method = "ellipse",
+         type = "lower",
+         tl.col = "black",
+         tl.srt = 45,
+         p.mat = p_matrix_adj_sel_z,
+         sig.level = 0.05,
+         insig = "blank", 
+         addCoef.col = "black", 
+         number.cex = 0.5, 
+         title = "Correlation among ARG z-score and select secondary variables",
+         mar = c(0,0,2,0),
+         cex.main = 0.8)
+dev.off()
+```
+
+```{r comparison_categorical}
+
+#Wide data frame for variables needed 
+data_ARG_cat <- data_burden_mer %>% 
+  select (site, plant, city, state, 
+          Burden_all, Burden_bla, Burden_col, Burden_van, Burden_tet,
+          urban_prop, total_hospitals, total_nursing, total_airports)
+
+#Making urban proportion categorical 
+data_ARG_cat_abv <- filter(data_ARG_cat, urban_prop >= 0.5)
+data_ARG_cat_bel <- filter(data_ARG_cat, urban_prop < 0.5)
+data_ARG_cat_abv$urban <- "Yes"
+data_ARG_cat_bel$urban <- "No"
+
+data_ARG_cat <- rbind(data_ARG_cat_abv, data_ARG_cat_bel)
+
+#Making hospital number categorical
+data_ARG_cat_abv <- filter(data_ARG_cat, total_hospitals >= 1)
+data_ARG_cat_bel <- filter(data_ARG_cat, total_hospitals < 1)
+
+data_ARG_cat_abv$hospital <- "1+"
+data_ARG_cat_bel$hospital <- "< 1"
+
+data_ARG_cat <- rbind(data_ARG_cat_abv, data_ARG_cat_bel)
+
+#Making nursing home categorical 
+data_ARG_cat_abv <- filter(data_ARG_cat, total_nursing >= 7)
+data_ARG_cat_bel <- filter(data_ARG_cat, total_nursing < 7)
+
+data_ARG_cat_abv$nursing <- "7+"
+data_ARG_cat_bel$nursing <- "< 7"
+
+data_ARG_cat <- rbind(data_ARG_cat_abv, data_ARG_cat_bel)
+
+#Making airport categorical 
+data_ARG_cat_abv <- filter(data_ARG_cat, total_airports > 0)
+data_ARG_cat_bel <- filter(data_ARG_cat, total_airports == 0)
+
+data_ARG_cat_abv$airport <- "Yes"
+data_ARG_cat_bel$airport <- "No"
+
+data_ARG_cat <- rbind(data_ARG_cat_abv, data_ARG_cat_bel)
+
+#Making data long
+data_ARG_cat_long <- pivot_longer(data_ARG_cat, cols = urban:airport,
+                                  names_to = "Facility",
+                                  values_to = "Count")
+
+#For total ARG burden
+Fig_TotARGcat_box <-
+ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_all)) +
+  geom_jitter(size = 0.3, alpha = 0.9) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  facet_wrap(vars(Facility), scales = "free", nrow = 1) +
+#  scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE)) +
+  scale_color_viridis_c(option = "turbo") +
+  ylim(-7, 15)+
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  theme_light()
+
+wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "airport"))
+wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "hospital"))
+wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "nursing"))
+wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "urban"))
+
+#For total Bla burden
+Fig_blaARGcat_box <-
+ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_bla)) +
+  geom_jitter(size = 0.3, alpha = 0.9) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  facet_wrap(vars(Facility), scales = "free", nrow = 1) +
+#  scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE)) +
+  scale_color_viridis_c(option = "turbo") +
+  ylim(-5, 20) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  theme_light()
+
+wilcox.test(Burden_bla ~ Count, data = subset(data_ARG_cat_long, Facility == "airport"))
+wilcox.test(Burden_bla ~ Count, data = subset(data_ARG_cat_long, Facility == "hospital"))
+wilcox.test(Burden_bla ~ Count, data = subset(data_ARG_cat_long, Facility == "nursing"))
+wilcox.test(Burden_bla ~ Count, data = subset(data_ARG_cat_long, Facility == "urban"))
+
+#For total colistin burden
+Fig_colARGcat_box <-
+ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_col)) +
+  geom_jitter(size = 0.3, alpha = 0.9) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  facet_wrap(vars(Facility), scales = "free", nrow = 1) +
+#  scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE)) +
+  scale_color_viridis_c(option = "turbo") +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  theme_light()
+
+wilcox.test(Burden_col ~ Count, data = subset(data_ARG_cat_long, Facility == "airport"))
+wilcox.test(Burden_col ~ Count, data = subset(data_ARG_cat_long, Facility == "hospital"))
+wilcox.test(Burden_col ~ Count, data = subset(data_ARG_cat_long, Facility == "nursing"))
+wilcox.test(Burden_col ~ Count, data = subset(data_ARG_cat_long, Facility == "urban"))
+
+#For total tetracycline burden
+Fig_tetARGcat_box <-
+ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_tet)) +
+  geom_jitter(size = 0.3, alpha = 0.9) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  facet_wrap(vars(Facility), scales = "free", nrow = 1) +
+#  scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE)) +
+  scale_color_viridis_c(option = "turbo") +
+  ylim(-0.13, 0.15) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  theme_light()
+
+#For total vancomycin burden
+Fig_vanARGcat_box <-
+ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_van)) +
+  geom_jitter(size = 0.3, alpha = 0.9) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+  facet_wrap(vars(Facility), scales = "free", nrow = 1) +
+#  scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE)) +
+  scale_color_viridis_c(option = "turbo") +
+  ylim(-0.5, 3.5) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
+  theme_light()
+
+wilcox.test(Burden_van ~ Count, data = subset(data_ARG_cat_long, Facility == "airport"))
+wilcox.test(Burden_van ~ Count, data = subset(data_ARG_cat_long, Facility == "hospital"))
+wilcox.test(Burden_van ~ Count, data = subset(data_ARG_cat_long, Facility == "nursing"))
+wilcox.test(Burden_van ~ Count, data = subset(data_ARG_cat_long, Facility == "urban"))
+
+ggsave(Fig_TotARGcat_box, file = "Fig_TotARGcat_box.png", width = 5, height = 2)
+ggsave(Fig_blaARGcat_box, file = "Fig_blaARGcat_box.png", width = 5, height = 2)
+ggsave(Fig_colARGcat_box, file = "Fig_colARGcat_box.png", width = 5, height = 2)
+ggsave(Fig_tetARGcat_box, file = "Fig_tetARGcat_box.png", width = 5, height = 2)
+ggsave(Fig_vanARGcat_box, file = "Fig_vanARGcat_box.png", width = 5, height = 2)
+```
+
+## 3.5 Geographic trends: census region
 
 Plotting distribution of ARGs by census regions: 
 
@@ -409,5 +837,13 @@ conover.test(subset(data_ABD_use, ABD_Class == "ABD_tot")$ABD_Use,
 conover.test(subset(data_ABD_use, ABD_Class == "Bla_norm")$ABD_Use, 
              subset(data_ABD_use, ABD_Class == "Bla_norm")$Region,
              method = "Bonferroni")
+
+```
+
+
+```{r}
+
+ggplot(data_ARG_ABD, aes(x = ABD_tot, y = Burden_all, color = Region)) +
+  geom_point()
 
 ```
