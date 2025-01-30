@@ -587,16 +587,26 @@ data_10_mer <- merge(data_08_ARG_mer, data_09_EVA_SB,
 #plant.y seems to be the more specific plant name so we'll set that as the base plant name
 data_10_mer <- rename(data_10_mer, plant = plant.y)
 
+#Order ARGs manually
+data_10_mer$target <- factor(data_10_mer$target,
+                             levels = c("CMY", "CTX-M", "KPC", "MecA", "NDM",
+                                        "OXA-48", "TEM", "VIM",
+                                        "MCR-1", "TetW", 
+                                        "VanA", "VanB"))
+
 #Distribution when normalized by 16S 
+Fig_DistBar <-
 ggplot(data_10_mer, aes(x = target, y = conc_norm_S, color = target)) + 
   geom_jitter(aes(shape = detect), color = "darkgrey", size = 0.5, alpha = 0.9) +
-  geom_boxplot(alpha = 0.7) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA, lwd = 0.7) +
   scale_y_continuous(trans = 'log10') + 
-  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#a1d99b","#9ecaef" )) + 
+  scale_color_manual(values = c("#08519c","#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#fc9272","#525252","#31a354","#31a354" )) + 
   scale_shape_manual(values = c(19, 1)) +
   ylab("Conc (-)") + 
   theme_bw() +
   labs(title = "ARG distribution normalized by 16S")
+
+ggsave(Fig_DistBar, file = "Fig_DistBar.pdf", width = 9, height = 5)
 
 #Distribution when normalized by rpoB
 ggplot(data_10_mer, aes(x = target, y = conc_norm_B, color = target)) + 
