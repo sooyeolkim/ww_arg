@@ -49,13 +49,19 @@ data_01_ctr_raw <- read_csv("dPCR_EVA_Compiled - Control.csv")
 #Metadata
 data_01_met_raw <- read_csv("ARG_project_metadata.csv")
 
-#Selecting needed columns from each dataset to keep the data frame more manageable and renaming for ease of coding 
-data_02_ARG_mod <- select(data_01_ARG_raw, `Sample description 1`, `Accepted Droplets`, Positives, MergedWells, `Conc(copies/µL)...8`, plant, date, percent_solids, dry_mass, target, dilution, dry_gc_g, uci_68_dry, lci_68_dry, gc_ul_template, uci_68_gc_ul_template, lci_68_gc_ul_template) %>%
+#Selecting needed columns from each dataset to keep the data frame more manageable and renaming for ease of coding (VanB excluded since it had a double band)
+data_02_ARG_mod <- select(data_01_ARG_raw, `Sample description 1`, 
+                          `Accepted Droplets`, Positives, MergedWells, 
+                          `Conc(copies/µL)...8`, plant, date, percent_solids, 
+                          dry_mass, target, dilution, dry_gc_g, uci_68_dry, 
+                          lci_68_dry, gc_ul_template, uci_68_gc_ul_template,
+                          lci_68_gc_ul_template) %>%
   rename(sample_id = `Sample description 1`,
          accepted = `Accepted Droplets`, 
          positives = Positives, 
          merged_wells = MergedWells,
-         conc_ul = `Conc(copies/µL)...8`)
+         conc_ul = `Conc(copies/µL)...8`) %>% 
+  subset(target != "VanB")
 
 data_02_EVA_mod <- select(data_01_EVA_raw, Plate, `Sample description 1`, `Sample description 2`, Target, `Conc(copies/µL)`, `Accepted Droplets`, Positives, plant, date, percent_solids, dry_mass, dry_gc_g, gc_ul_template) %>% 
   rename(plate = Plate,
@@ -428,7 +434,7 @@ ggplot(data_08_ARG_mer, aes(x = target, y = dry_gc_g, color = target)) +
   geom_jitter(aes(shape = detect), color = "darkgrey", size = 0.5, alpha = 0.9) +
   geom_boxplot(alpha = 0.7) +
   scale_y_continuous(trans = 'log10') + 
-  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#a1d99b","#9ecaef" )) + 
+  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#9ecaef" )) + 
   scale_shape_manual(values = c(19, 1)) +
   ylab("Conc (cp/g dry weight)") + 
   theme_bw() + 
@@ -438,7 +444,7 @@ ggplot(data_08_ARG_mer, aes(x = target, y = dry_gc_g/PMMoV_gc_g, color = target)
   geom_jitter(aes(shape = detect), color = "darkgrey", size = 0.5, alpha = 0.9) +
   geom_boxplot(alpha = 0.7) +
   scale_y_continuous(trans = 'log10') + 
-  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#a1d99b","#9ecaef" )) + 
+  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#9ecaef" )) + 
   scale_shape_manual(values = c(19, 1)) +
   ylab("Conc (-)") + 
   theme_bw() + 
@@ -592,16 +598,21 @@ data_10_mer$target <- factor(data_10_mer$target,
                              levels = c("CMY", "CTX-M", "KPC", "MecA", "NDM",
                                         "OXA-48", "TEM", "VIM",
                                         "MCR-1", "TetW", 
-                                        "VanA", "VanB"))
+                                        "VanA"))
 
 #Distribution when normalized by 16S 
 Fig_DistBar <-
 ggplot(data_10_mer, aes(x = target, y = conc_norm_S, color = target)) + 
-  geom_jitter(aes(shape = detect), color = "darkgrey", size = 0.5, alpha = 0.9) +
+  geom_jitter(aes(color = detect), size = 1, alpha = 0.7) +
   geom_boxplot(alpha = 0.7, outlier.shape = NA, lwd = 0.7) +
   scale_y_continuous(trans = 'log10') + 
-  scale_color_manual(values = c("#08519c","#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#08519c", "#fc9272","#525252","#31a354","#31a354" )) + 
-  scale_shape_manual(values = c(19, 1)) +
+  scale_color_manual(values = c("#505050","#505050", "#505050", "#505050",
+                                "#505050", "#505050", "#505050", "#505050",
+                                "#D24D6E",
+                                "#6B3F2B",
+                                "#FF7F32", 
+                                "#b3b3b3" , "#e5c494" )) + 
+  scale_shape_manual(values = c(20, 1)) +
   ylab("Conc (-)") + 
   theme_bw() +
   labs(title = "ARG distribution normalized by 16S")
@@ -613,8 +624,8 @@ ggplot(data_10_mer, aes(x = target, y = conc_norm_B, color = target)) +
   geom_jitter(aes(shape = detect), color = "darkgrey", size = 0.5, alpha = 0.9) +
   geom_boxplot(alpha = 0.7) +
   scale_y_continuous(trans = 'log10') + 
-  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#a1d99b","#9ecaef" )) + 
-  scale_shape_manual(values = c(19, 1)) +
+  scale_color_manual(values = c("#05386d","#54278f", "#08519c", "#fc9272", "#756bb1", "#3182bd", "#6baed6", "#9e9ac8", "#525252","#31a354","#9ecaef" )) + 
+  scale_shape_manual(values = c(20, 1)) +
   ylab("Conc (-)") + 
   theme_bw() + 
   labs(title = "ARG distribution normalized by rpoB")
@@ -695,22 +706,17 @@ sec_02_ABD_norm <- sec_01_ABD_raw %>%
          Tetracycline_norm = Tetracycline/TotalEncounters,
          Vancomycin_norm = Vancomycin/TotalEncounters)
 
-#Various indicators 
+#Various indicators including agriculture data
 sec_01_ind_raw <- read_csv("secondary_data_arg.csv") %>% 
   rename(plant = name) %>%
-  select(-All_cattle, -Broiler_chicken, -Hogs,
-         #Taking out themes since we have individual components as variables PROP_
-         -RPL_THEMES, -RPL_THEME1, -RPL_THEME2, -RPL_THEME3, -RPL_THEME4)
+  select(-Broilers, -Layers, -Pullets, -Roosters)
 
 #Fixing typos and differences in site names 
 data_10_mer$city <- gsub("\\.", "", data_10_mer$city) #to match cities in other datasets
-
-#Animal agriculture data 
-sec_01_aa_raw <- read_csv("WWSCAN_sewershed_agriculture_v2.csv")
 ```
 
 Since we're treating different time points for each WWTP as replicates, we'll summarize the dPCR data so that each treatment plant has one value for one target and format other data frames to be wide to be merged. 
-```{r data_prep, fig.width = 7, fig.height = 2}
+```{r data_prep}
 #Treating different time points for each WWTP as replicates 
 data_11_sum <- data_10_mer %>% group_by(site, plant, city, state, zipcode, 
                                         population, fips, target) %>%
@@ -729,6 +735,21 @@ data_11_sum <- data_10_mer %>% group_by(site, plant, city, state, zipcode,
          ratio_S = mean_ARG_S/norm_ARG_S,
          ratio_B = mean_ARG_B/norm_ARG_B)
 
+#Make column to indicate how many were detects 
+data_11_sum$Detect <- NA
+
+for (i in 1:length(data_11_sum$site)){
+  i_site <- data_11_sum$site[i]
+  i_targ <- data_11_sum$target[i]
+  data_subset <- subset(data_10_mer, 
+                        site == i_site & target == i_targ)
+  if (all(data_subset$detect == "D")) {
+    data_11_sum$Detect[i] <- "D"
+    } else if (all(data_subset$detect == "ND")) {
+      data_11_sum$Detect[i] <- "ND"
+      } else {data_11_sum$Detect[i] <- "PD"}
+}
+
 #See if there's a big difference between average of normalized values vs normalized average values
 ggplot(data_11_sum) +
 #  geom_boxplot(aes(x = target, y = ratio_P)) + 
@@ -738,40 +759,41 @@ ggplot(data_11_sum) +
   scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE))   
 ```
 
+```{r plot_sum}
+#Order ARGs manually
+data_11_sum$target <- factor(data_11_sum$target,
+                             levels = c("CMY", "CTX-M", "KPC", "MecA", "NDM",
+                                        "OXA-48", "TEM", "VIM",
+                                        "MCR-1", "TetW", 
+                                        "VanA"))
+
+#Distribution when normalized by 16S 
+Fig_DistBar_sum <-
+ggplot(subset(data_11_sum, target != "VanB"), 
+       aes(x = target, y = mean_ARG_S, color = target)) + 
+  geom_jitter(aes(color = Detect), size = 1, alpha = 0.7) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA, lwd = 0.5) +
+  scale_y_continuous(trans = 'log10') + 
+  scale_color_manual(values = c("#4c4c4c","#4c4c4c", "#4c4c4c", "#4c4c4c",
+                                "#4c4c4c","#4c4c4c", "#4c4c4c", "#4c4c4c",
+                                "#9a3030",
+                                "#cf9e0f",
+                                "#7B8D3C", 
+                                "#b3b3b3","#e5c494","#8f7e5f")) + 
+  ylab("Conc (-)") + 
+  theme_bw() +
+  labs(title = "ARG distribution normalized by 16S")
+
+ggsave(Fig_DistBar_sum, file = "Fig_DistBar_sum.pdf", width = 9, height = 5)
+```
+
 Variable mean_ARG_X is average of normalized values and norm_ARG_X is normalizing with averaged values. It seems that overall average of normalized values are usually higher than the corresponding normalizing with averaged values (above the dashed line, which is ratio of 1). Using the average of normalized values make more sense since then the normalizer and the target would be date-matched; therefore, we'll use the average of normalized values in further analysis. 
 
-The animal agriculture data currently has various categories of cattle and chickens. For cattle, the following choices are available: cattle, excluding cows; cattle, cows; cattle, cows, beef; cattle, cows, milk; cattle, incl calves; cattle, on feed. Since cattle, incl calves is the broadest category, we'll use that data. 
+The animal agriculture data originally had various categories of cattle and chickens. For cattle, the following choices are available: cattle, excluding cows; cattle, cows; cattle, cows, beef; cattle, cows, milk; cattle, incl calves; cattle, on feed. Since cattle, incl calves is the broadest category, we're using that data. 
 
-For chicken, the following data is available: chickens, broilers; chickens, layers; chickens, pullets, replacement; chickens, roosters. Since all chickens are relevant to our analysis, we'll add the numbers up to get a total number of chickens. 
+For chicken, the following data is available: chickens, broilers; chickens, layers; chickens, pullets, replacement; chickens, roosters. Since all chickens are relevant to our analysis, we've added the numbers up to get a total number of chickens. 
 
 There is only one data item for hogs. 
-
-```{r prep_aa}
-#Filter for "cattle, incl calves" 
-sec_01_aa_cow <- sec_01_aa_raw[grepl("CATTLE", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ] %>% 
-  filter(Data.Item == "CATTLE, INCL CALVES - INVENTORY") %>% 
-  select("name", "Data.Item", "Value_num")
-
-#Add up all types of chicken for an inclusive number of chickens for each sewershed 
-sec_01_aa_ckn <- sec_01_aa_raw[grepl("CHICKENS", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ] %>%
-  group_by(name) %>%
-  summarise(Value_num = sum(Value_num, na.rm = TRUE))
-sec_01_aa_ckn$Data.Item <- "CHICKEN, TOTAL"
-
-#Hogs 
-sec_01_aa_pig <- sec_01_aa_raw[grepl("HOGS", sec_01_aa_raw$Data.Item, ignore.case = TRUE), ] %>%
-  select("name", "Data.Item", "Value_num")
-
-#Merge cow, chicken, and pig together 
-sec_02_aa_filt <- rbind(sec_01_aa_cow, sec_01_aa_ckn, sec_01_aa_pig) %>% 
-  rename(plant = name)
-
-#Make into wide data frame
-sec_03_aa_wide <- sec_02_aa_filt %>% 
-  select(plant, Data.Item, Value_num) %>% 
-  pivot_wider(names_from = Data.Item, values_from = Value_num)
-
-```
 
 Merge everything together to make one big data frame 
 ```{r merge_all}
@@ -780,8 +802,7 @@ data_all_1 <- merge(data_11_sum, sec_02_ABD_norm,
                     by = c("city", "state", "site"), 
                     all.x = TRUE) %>%
   select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
-data_all_2 <- merge(data_all_1, sec_03_aa_wide, by = c("plant"), all.x = TRUE)
-data_all_3 <- merge(data_all_2, sec_01_ind_raw, by = c("plant"), all.x = TRUE)
+data_all_2 <- merge(data_all_1, sec_01_ind_raw, by = c("plant"), all.x = TRUE)
 ```
 
 ## 1.9 Combine ARG as scores to express as ARG burden
@@ -790,24 +811,30 @@ We'll look at ARG concentrations as individual concentrations but also as overal
 ```{r z-scores}
 
 #New column for z scores
-data_all_3$zscore <- NA
+data_all_2$zscore <- NA
 
 #Assign z scores 
-for (i in 1:length(data_all_3$plant)) {
-  targ <- data_all_3$target[i]
-  average = mean(subset(data_all_3, target == targ)$mean_ARG_S, na.rm = TRUE)
-  std = sd(subset(data_all_3, target == targ)$mean_ARG_S, na.rm = TRUE)
-  data_all_3$zscore[i] <- (data_all_3$mean_ARG_S[i] - average)/std
+for (i in 1:length(data_all_2$plant)) {
+  targ <- data_all_2$target[i]
+  average = mean(subset(data_all_2, target == targ)$mean_ARG_S, na.rm = TRUE)
+  std = sd(subset(data_all_2, target == targ)$mean_ARG_S, na.rm = TRUE)
+  zscore <- (data_all_2$mean_ARG_S[i] - average)/std
+  if(data_all_2$mean_ARG_S[i] < 3*std && data_all_2$mean_ARG_S[i] > -3*std) {
+    data_all_2$zscore[i] <- zscore
+  }
 }
 
+#Taking out outliers that was more than 3 standard deviations away
+data_all_3 <- subset(data_all_2, !is.na(zscore))
+
 #Assigning overall ARG burden 
-data_burden_tot <- data_all_3 %>% 
+data_burden_tot <- data_all_2 %>% 
   group_by(site, plant, city, state) %>%
   summarise(Burden_all = sum(zscore)) 
 
 #Combining class of antibiotics 
 #Betalactamase: CMY, CTX-M, KPC, mecA, NDM, OXA-48, TEM, VIM
-data_burden_bla <- data_all_3 %>% 
+data_burden_bla <- data_all_2 %>% 
   subset(target == "CMY" | target == "CTX-M" | 
          target == "KPC" | target == "MecA" | target == "NDM" |
          target == "OXA-48" | target == "TEM" | target == "VIM") %>%
@@ -815,19 +842,19 @@ data_burden_bla <- data_all_3 %>%
   summarise(Burden_bla = sum(zscore)) 
 
 #Colistin: mcr-1
-data_burden_col <- data_all_3 %>% 
+data_burden_col <- data_all_2 %>% 
   subset(target == "MCR-1") %>%
   group_by(site, plant, city, state) %>%
   summarise(Burden_col = sum(zscore)) 
 
-#Vancomycin: vanA, vanB
-data_burden_van <- data_all_3 %>% 
-  subset(target == "VanA" | target == "VanB") %>%
+#Vancomycin: vanA
+data_burden_van <- data_all_2 %>% 
+  subset(target == "VanA") %>%
   group_by(site, plant, city, state) %>%
   summarise(Burden_van = sum(zscore)) 
 
 #Tetracycline: tetW 
-data_burden_tet <- data_all_3 %>% 
+data_burden_tet <- data_all_2 %>% 
   subset(target == "TetW") %>%
   group_by(site, plant, city, state) %>%
   summarise(Burden_tet = sum(zscore)) 
@@ -847,8 +874,7 @@ data_burden <- merge(data_burden_tot, data_burden_bla,
         all = TRUE)
 
 #Re-merge with secondary data
-data_burden_mer <- merge(data_burden, sec_03_aa_wide, by = c("plant"), all.x = TRUE) %>%
-  merge(sec_01_ind_raw, by = c("plant"), all.x = TRUE) %>%
+data_burden_mer <- merge(data_burden, sec_01_ind_raw, by = c("plant"), all.x = TRUE) %>%
   merge(sec_02_ABD_norm, 
         by = c("city", "state", "site"), 
         all.x = TRUE) %>%
@@ -860,13 +886,13 @@ ARG burden is also often expressed as raw sum of concentrations so relevant ARG 
 ```{r totalConcAdded}
 
 #Assigning overall ARG burden 
-data_burden_add <- data_all_3 %>% 
+data_burden_add <- data_all_2 %>% 
   group_by(site, plant, city, state) %>%
   summarise(Burden_all = sum(mean_ARG_S)) 
 
 #Combining class of antibiotics 
 #Betalactamase: CMY, CTX-M, KPC, mecA, NDM, OXA-48, TEM, VIM
-data_burden_bla_add <- data_all_3 %>% 
+data_burden_bla_add <- data_all_2 %>% 
   subset(target == "CMY" | target == "CTX-M" | 
          target == "KPC" | target == "MecA" | target == "NDM" |
          target == "OXA-48" | target == "TEM" | target == "VIM") %>%
@@ -874,19 +900,19 @@ data_burden_bla_add <- data_all_3 %>%
   summarise(Burden_bla = sum(mean_ARG_S)) 
 
 #Colistin: mcr-1
-data_burden_col_add <- data_all_3 %>% 
+data_burden_col_add <- data_all_2 %>% 
   subset(target == "MCR-1") %>%
   group_by(site, plant, city, state) %>%
   summarise(Burden_col = sum(mean_ARG_S)) 
 
-#Vancomycin: vanA, vanB
-data_burden_van_add <- data_all_3 %>% 
-  subset(target == "VanA" | target == "VanB") %>%
+#Vancomycin: vanA
+data_burden_van_add <- data_all_2 %>% 
+  subset(target == "VanA") %>%
   group_by(site, plant, city, state) %>%
   summarise(Burden_van = sum(mean_ARG_S)) 
 
 #Tetracycline: tetW 
-data_burden_tet_add <- data_all_3 %>% 
+data_burden_tet_add <- data_all_2 %>% 
   subset(target == "TetW") %>%
   group_by(site, plant, city, state) %>%
   summarise(Burden_tet = sum(mean_ARG_S)) 
@@ -906,12 +932,12 @@ data_burden_add <- merge(data_burden_add, data_burden_bla_add,
         all = TRUE)
 
 #Re-merge with secondary data
-data_burden_add <- merge(data_burden_add, sec_03_aa_wide, by = c("plant"), all.x = TRUE) %>%
-  merge(sec_01_ind_raw, by = c("plant"), all.x = TRUE) %>%
+data_burden_add <- merge(data_burden_add, sec_01_ind_raw, by = c("plant"), all.x = TRUE) %>%
   merge(sec_02_ABD_norm, 
         by = c("city", "state", "site"), 
         all.x = TRUE) %>%
   select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
+
 
 ```
 
@@ -921,7 +947,8 @@ These are the final data sets that we're working with so we'll export them.
 #Export data frame 
 write.csv(data_10_mer, "dPCR_data_final.csv", row.names = FALSE)
 write.csv(data_11_sum, "dPCR_data_averaged.csv", row.names = FALSE)
-write.csv(data_all_3, "data_all.csv", row.names = FALSE)
+write.csv(data_all_2, "data_all.csv", row.names = FALSE)
+write.csv(data_all_3, "data_all_NoOutlier.csv", row.names = FALSE)
 write.csv(data_burden_mer, "data_ARGburden.csv", row.names = FALSE)
 write.csv(data_burden_add, "data_ARGburden_Conc.csv", row.names = FALSE)
 ```
