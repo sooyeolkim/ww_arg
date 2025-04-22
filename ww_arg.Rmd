@@ -30,9 +30,9 @@ library(sf) #simple features package useful for handling spatial data
 
 ## 1.2 Import raw data and clean 
 
-Downloading dPCR results of the ARGs and 16S/rpoB, currently in csv files in the same folder as this R Markdown. Each csv used without renaming and has already been matched for sample location/date/solid content to calculate the resulting concentration on the spreadsheet for those that resulted in 3 or more positive droplets (detect). 
+Downloading dPCR results of the ARGs and 16S/rpoB, currently in csv files in the same folder as the R Markdown. Each csv was used without renaming and has already been matched for sample location/date/solid content to calculate the resulting concentration on the spreadsheet for those that resulted in 3 or more positive droplets (detect). 
 
-On the EVA sheet, empty wells have been taken out. Plate 4 rpoB plate had been mislabeled and was corrected (plate same as plate map except E11 -> A11). Plate 2 rpoB well H10 also mislabeled so corrected. 
+On the EVA sheet (corresponding to 16S/rpoB), empty wells have been taken out. Plate 4 rpoB plate had been mislabeled and was corrected (plate same as plate map except E11 -> A11). Plate 2 rpoB well H10 also mislabeled so corrected. 
 
 On the metadata sheet, 80-240522 was present twice (same exact information) so one row was removed. Site name for 129-240521 was corrupted so it was corrected. 
 
@@ -121,6 +121,7 @@ data_02_EVA_mod$dry_gc_g <- as.numeric(data_02_EVA_mod$dry_gc_g)
 data_02_EVA_mod$gc_ul_template <- as.numeric(data_02_EVA_mod$gc_ul_template)
 
 data_02_met_mod$zipcode <- as.character(data_02_met_mod$zipcode)
+
 #Correct zipcodes that are missing the initial zero 
 for (i in 1:length(data_02_met_mod$sample_id)) {
   if (!is.na(data_02_met_mod$zipcode[i])) {
@@ -160,6 +161,7 @@ data_03_ctr_mod <- rbind(data_temp_below, data_temp_above)
 ```
 
 ## 1.3 QA/QC 
+Following are the QA/QC criteria for all data:
 1. Number of droplets at least over 10k 
 2. All NTC non-detect or at least less than 1/10 of sample concentration: This has been checked manually for ARG plates. All NTC was ND so needs to only be checked for EVA. 
 3. If undetected, not from a diluted sample
@@ -184,11 +186,11 @@ filter(data_03_ARG_mod, accepted <= 10000)
 filter(data_03_EVA_mod, accepted <= 10000)
 ```
 
-Updated Aug 12, 2024: 
-Original dimension of data_03_ARG_mod is 5550 x 17, of data_03_EVA_mod is 902 x 13, and of data_03_ctr_mod is 16 x 7. 
-After QC1, data_04_ARG_pass is 5526 x 17 (24 measurements taken out), data_04_EVA_pass is 897 x 13 (5 measurements taken out), and data_04_ctr_pass is 16 x 8 (no measurements taken out). 
+Updated Mar 30, 2024: 
+Original dimension of data_03_ARG_mod is 5098 x 17, of data_03_EVA_mod is 902 x 13, and of data_03_ctr_mod is 16 x 7. 
+After QC1, data_04_ARG_pass is 5078 x 17 (20 measurements taken out), data_04_EVA_pass is 897 x 13 (5 measurements taken out), and data_04_ctr_pass is 16 x 8 (no measurements taken out). 
 
-The 24 measurements taken out in ARG were: 
+The 20 measurements taken out in ARG were: 
 126-240516 low conc targets (redone)
 147-240521 low conc targets (redone)
 43-240521 low conc targets (redone)
@@ -201,7 +203,7 @@ The five measurements taken out in EVA were:
 183-240517 16S (redone)
 121-240520 16S (redone)
 
-QAQC #2 only to EVA assays since the ARG assays were checked manually already that all NTC were non detects. 
+QAQC #2 was only conducted to EVA assays since the ARG assays were checked manually already that all NTCs were non detects. 
 
 ```{r data_qaqc2}
 #Filter for any NTC that has detectable level of target 
@@ -286,7 +288,7 @@ dim(data_05_ARG_pass)
 dim(data_05_EVA_pass)
 ```
 
-After QAQC, the dimensions for data_05_ARG_pass is 5491 x 18 (35 samples from #3 excluded) and for data_05_EVA_pass is 893 x 14 (4 samples from #2 excluded). 
+After QAQC, the dimensions for data_05_ARG_pass is 5043 x 18 (35 samples from #3 excluded) and for data_05_EVA_pass is 893 x 14 (4 samples from #2 excluded). 
 
 ## 1.4 Data selection & Calculation
 There were some samples that were run twice with different dilutions so we have to select the final concentration for those samples. 
@@ -330,9 +332,6 @@ dim(data_06_ARG_filt)
 unique_id <- unique(data_05_EVA_pass$sample_id)
 unique_target <- unique(data_05_EVA_pass$target)
 
-#Calculating confidence interval range 
-#data_05_EVA_pass <- mutate(data_05_EVA_pass, ci_68_dry = uci_68_dry - lci_68_dry)
-
 #Data frame for duplicate measurements to look at effects of freeze-thaw 
 data_dup_EVA <- data.frame(matrix(ncol = 14, nrow = 0))
 colnames(data_dup_EVA) <- colnames(data_05_EVA_pass)
@@ -341,7 +340,7 @@ colnames(data_dup_EVA) <- colnames(data_05_EVA_pass)
 data_06_EVA_filt <- data.frame(matrix(ncol = 14, nrow = 0))
 colnames(data_06_EVA_filt) <- colnames(data_05_EVA_pass)
 
-#Selecting the bigger concentration for now since that happens to be the reruns 
+#Selecting the bigger concentration since that happens to be the reruns 
 for (i in 1:length(unique_id)) {
   i_sample <- unique_id[i]
   for (j in 1:length(unique_target)) {
@@ -350,7 +349,7 @@ for (i in 1:length(unique_id)) {
     if (nrow(data_temp) > 1) {
       data_dup_EVA <- rbind(data_dup_EVA, data_temp)
       i_max = which(data_temp$dry_gc_g == max(data_temp$dry_gc_g))
-      #If there's multiple minimum because the confidence interval range is the same 
+      #If there's multiple minimum because the value is the same 
       if (length(i_min) > 1) {
         data_06_EVA_filt <- rbind(data_06_EVA_filt, data_temp[i_min[1], ])
       } else {data_06_EVA_filt <- rbind(data_06_EVA_filt, data_temp[i_min, ]) }
@@ -362,11 +361,11 @@ dim(data_06_EVA_filt)
 
 ```
 
-There were 122 measurements that were rerun in the ARG data frame (total of 244 measurements). Choosing one of the measurements based on the confidence interval range, the dimension of the data frame is now 5369 x 19. For EVA assays, there were 8 measurements that were rerun (total of 16 measurements). Choosing one of the measurements based on the resulting concentration, the dimension of the data frame is 885 x 14. 
+There were 122 measurements that were rerun in the ARG data frame (total of 244 measurements). Choosing one of the measurements based on the confidence interval range, the dimension of the data frame is now 4921 x 19. For EVA assays, there were 8 measurements that were rerun (total of 16 measurements). Choosing one of the measurements based on the resulting concentration, the dimension of the data frame is 885 x 14. 
 
-We'll also take out the measurement from UC Davis since its data isn't going to be used. 
+We'll also take out the measurement from UC Davis since its data isn't going to be used because it doesn't match a county. 
 
-```{r UC}
+```{r data_select_UCD}
 data_06_ARG_filt <- subset(data_06_ARG_filt, plant != "UC Davis")
 data_06_EVA_filt <- subset(data_06_EVA_filt, plant != "UC Davis")
 
@@ -425,7 +424,7 @@ setdiff(unique(data_07_ARG_calc$sample_id), unique(data_08_ARG_mer$sample_id))
 
 ```
 
-After QA/QC, we have 443 samples and 5309 measurements that represent 163 plants in 40 states and 134 cities in the US. This is excluding the 2 samples from site 87 that Dora said should be excluded because they don't get exported (87-240519, 87-240521). 
+After QA/QC, we have 443 samples and 4866 measurements that represent 163 plants in 40 states and 134 cities in the US. This is excluding the 2 samples from site 87 that should be excluded because they don't get exported (87-240519, 87-240521). 
 
 Plotting the distribution of ARGs for each target: 
 
@@ -467,7 +466,7 @@ length(unique(data_08_EVA_mer$city))
 setdiff(unique(data_08_ARG_mer$sample_id), unique(data_08_EVA_mer$sample_id))
 ```
 
-After QA/QC, we have 442 samples and 881 measurements that represent 164 plants in 40 states and 134 cities in the US. This is excluding the 2 samples from site 87 that Dora said should be excluded because they don't get exported (87-240519, 87-240521). 
+After QA/QC, we have 439 samples and 876 measurements that represent 163 plants in 40 states and 134 cities in the US. This is excluding the 2 samples from site 87 that should be excluded because they don't get exported (87-240519, 87-240521). 
 
 The following samples were not run with 16S and rpoB due to lack of sample after running the ARGs: 54-240522 (Little River, Roswell GA but have samples from other dates), 65-240522 (Pinson, AL but have two other dates), 225-240516 (Bridgewater NJ but have two other dates). 78-240520 16S & rpoB was taken out as part of the QAQC criteria #2. 
 
@@ -544,7 +543,7 @@ qqline(log10(data_09_EVA_rpoB$dry_gc_g))
 ```
 With Rosner's test on the log-transformed data, we identified one outlier (index = 247: 23-240517) that's the lowest point in 16S distribution and four outliers (index = 22: 107-240520, 248: 23-240517, 24: 107-240523, 23: 107-240522) that's the lowest four points in rpoB distribution. 
 
-Taking those points out, it still does not make the distribution normal by shapiro-wilk but we'll take them out for future analysis.  
+Taking those points out, it still does not make the distribution normal by shapiro-wilk, but we'll take them out for future analysis to prevent any impact to subsequent analysis.  
 
 ## 1.7 Normalizers
 Looking at the relationship between 16S and rpoB: 
@@ -617,6 +616,7 @@ ggplot(data_10_mer, aes(x = target, y = conc_norm_S, color = target)) +
   theme_bw() +
   labs(title = "ARG distribution normalized by 16S")
 
+#Save figure as pdf file
 ggsave(Fig_DistBar, file = "Fig_DistBar.pdf", width = 9, height = 5)
 
 #Distribution when normalized by rpoB
@@ -637,19 +637,18 @@ Either normalization method doesn't change the distribution noticeably, which ma
 
 Importing the secondary database to be used with our ARG concentration data are:
 1. Antibiotic consumption data from EPIC 
-2. Dataset with various indicators such as EJI, SVI, etc 
-3. Animal agriculture data that has number of chickens, cows, and hogs in the sewershed
+2. Dataset related to socioeconomic vulnerability from the census  
+3. Animal agriculture data that has number of chickens, cows, and hogs in the county matching each sewershed
 
 *Note: for All_metadata_08_12_24.csv the following changes were made to the csv to match with EPIC data: 
 1. First column of row numbers deleted
-2. Juneau and Burroughs was changed to Juneau 
+2. "Juneau and Burroughs" was changed to "Juneau" to match the name in other data sets 
 3. District of Columbia's county and state was changed from Washington to District Of Columbia and District of Columbia
 4. DuPage was changed to Dupage 
 5. Punctuation was taken out from St. Joseph
 6. Saint Mary's was changed to St Marys 
 
-*Note: for EPIC, the rows "None of the above" and "Total" were deleted 
-
+*Note: for EPIC, the rows "None of the above" and "Total" were deleted since they were irrelevant
 
 ```{r sec_import}
 #County names for pulling EPIC data
@@ -716,6 +715,7 @@ data_10_mer$city <- gsub("\\.", "", data_10_mer$city) #to match cities in other 
 ```
 
 Since we're treating different time points for each WWTP as replicates, we'll summarize the dPCR data so that each treatment plant has one value for one target and format other data frames to be wide to be merged. 
+
 ```{r data_prep}
 #Treating different time points for each WWTP as replicates 
 data_11_sum <- data_10_mer %>% group_by(site, plant, city, state, zipcode, 
@@ -750,13 +750,6 @@ for (i in 1:length(data_11_sum$site)){
       } else {data_11_sum$Detect[i] <- "PD"}
 }
 
-#See if there's a big difference between average of normalized values vs normalized average values
-ggplot(data_11_sum) +
-#  geom_boxplot(aes(x = target, y = ratio_P)) + 
-#  geom_boxplot(aes(x = target, y = ratio_S)) +
-  geom_boxplot(aes(x = target, y = ratio_B)) +
-  geom_hline(yintercept = 1, color = "darkgrey", linetype = "dashed") +
-  scale_y_continuous(trans = 'log10', labels = function(x) format(x, scientific = TRUE))   
 ```
 
 ```{r plot_sum}
@@ -771,19 +764,20 @@ data_11_sum$target <- factor(data_11_sum$target,
 Fig_DistBar_sum <-
 ggplot(subset(data_11_sum, target != "VanB"), 
        aes(x = target, y = mean_ARG_S, color = target)) + 
-  geom_jitter(aes(color = Detect), size = 1, alpha = 0.7) +
-  geom_boxplot(alpha = 0.5, outlier.shape = NA, lwd = 0.5) +
+  geom_jitter(aes(color = Detect), size = 1, alpha = 0.7, shape = 1) +
+  geom_boxplot(alpha = 0, outlier.shape = NA, lwd = 0.5) +
   scale_y_continuous(trans = 'log10') + 
   scale_color_manual(values = c("#4c4c4c","#4c4c4c", "#4c4c4c", "#4c4c4c",
                                 "#4c4c4c","#4c4c4c", "#4c4c4c", "#4c4c4c",
                                 "#9a3030",
                                 "#cf9e0f",
                                 "#7B8D3C", 
-                                "#b3b3b3","#e5c494","#8f7e5f")) + 
+                                "#b3b3b3","#e5c494","#6b4f2b")) + 
   ylab("Conc (-)") + 
   theme_bw() +
   labs(title = "ARG distribution normalized by 16S")
 
+#Save figure as pdf file
 ggsave(Fig_DistBar_sum, file = "Fig_DistBar_sum.pdf", width = 9, height = 5)
 ```
 
@@ -802,6 +796,7 @@ data_all_1 <- merge(data_11_sum, sec_02_ABD_norm,
                     by = c("city", "state", "site"), 
                     all.x = TRUE) %>%
   select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
+
 data_all_2 <- merge(data_all_1, sec_01_ind_raw, by = c("plant"), all.x = TRUE)
 ```
 
@@ -809,7 +804,6 @@ data_all_2 <- merge(data_all_1, sec_01_ind_raw, by = c("plant"), all.x = TRUE)
 We'll look at ARG concentrations as individual concentrations but also as overall or drug specific burden by making z-scores that can be added up. Z-scores were calculated by looking at overall distribution across all samples for that target in the dataset and comparing the concentration to the average and standard deviation of that distribution. 
 
 ```{r z-scores}
-
 #New column for z scores
 data_all_2$zscore <- NA
 
@@ -884,7 +878,6 @@ data_burden_mer <- merge(data_burden, sec_01_ind_raw, by = c("plant"), all.x = T
 ARG burden is also often expressed as raw sum of concentrations so relevant ARG concentrations were added. 
 
 ```{r totalConcAdded}
-
 #Assigning overall ARG burden 
 data_burden_add <- data_all_2 %>% 
   group_by(site, plant, city, state) %>%
@@ -937,7 +930,6 @@ data_burden_add <- merge(data_burden_add, sec_01_ind_raw, by = c("plant"), all.x
         by = c("city", "state", "site"), 
         all.x = TRUE) %>%
   select(-Colistin, -Carbapenems, -blactam, -Tetracycline, -Vancomycin)
-
 
 ```
 

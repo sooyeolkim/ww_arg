@@ -33,7 +33,6 @@ library(stats) #package for p-value corrections
 Construct a correlation matrix to look at correlation among ARGs. First, we'll do it with individual normalized concentrations. p-value adjustment not applied since we expect these concentrations to correlate. 
 
 ```{r corrplot_conc, fig.width = 4, fig.height = 4}
-
 #Wide data frame for ARG concentrations normalized by 16S
 data_11_wide <- data_all_3 %>% 
   select (site, plant, city, state, population, zipcode, fips, mean_ARG_S, target) %>% 
@@ -136,6 +135,7 @@ corrplot(cor_matrix_zscore_reordered,
 dev.off()
 
 ```
+
 The only difference should be correlation with total count since correlation among ARGs shouldn't be affected whether the comparison is with 16S normalized vs z-scores. 
 
 Looking at correlation when concentrations aggregated, first with sums: 
@@ -181,7 +181,6 @@ dev.off()
 Looking at correlation when aggregated as z-scores: 
 
 ```{r corrplot_agg_z, fig.width = 4, fig.height = 4}
-
 #Calculate Spearman correlation coefficients
 cor_matrix_burden <- cor(data_burden_mer[,5:9],
                          use = "na.or.complete",
@@ -219,8 +218,9 @@ dev.off()
 
 ## 3.3 Correlation with secondary data
 
-```{r corrplot_combined}
+Correlation matrix with ARG prevalence and potential determinants examined. BH correction used to limit false discovery rate. 
 
+```{r corrplot_combined}
 #Wide data frame for variables needed 
 data_ARG_all <- data_burden_mer %>%
   #Take out combined themes from SVI and EJI since we have individual components as PROP_
@@ -304,8 +304,9 @@ dev.off()
 
 ```
 
-```{r comparison_categorical}
+For points of interest, urbanicity, and population density, we're regarding these variables as binary so the comparison becomes categorical. 
 
+```{r comparison_categorical}
 #Wide data frame for variables needed 
 data_ARG_cat <- data_ARG_all %>% 
   select (1:12, 36:40)
@@ -367,9 +368,12 @@ ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_all)) +
   theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
   theme_light()
 
+#Wilcox test to see if there's significant difference between two groups
 wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "airport"))
-wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "hospital"))
-wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "nursing"))
+wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "hospital"),
+            conf.int = TRUE)
+wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "nursing"),
+            conf.int = TRUE)
 wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "pop_dense"))
 wilcox.test(Burden_all ~ Count, data = subset(data_ARG_cat_long, Facility == "urban"))
 
@@ -386,6 +390,13 @@ p_cat_all <- c(wilcox.test(Burden_all ~ Count,
 
 p_cat_all_adj <- p.adjust(p_cat_all, method = "BH")
 p_cat_all_adj
+
+#Statistics (effect size and degree of freedom)
+subset(data_ARG_cat_long, Facility == "hospital") %>% wilcox_effsize(Burden_all ~ Count)
+sum(!is.na(subset(data_ARG_cat_long, Facility == "hospital")$Burden_all))-1
+
+subset(data_ARG_cat_long, Facility == "nursing") %>% wilcox_effsize(Burden_all ~ Count)
+sum(!is.na(subset(data_ARG_cat_long, Facility == "nursing")$Burden_all))-1
 
 #For total Bla burden
 Fig_blaARGcat_box <-
@@ -433,6 +444,27 @@ p_cat_col <- c(wilcox.test(Burden_col ~ Count,
 p_cat_col_adj <- p.adjust(p_cat_col, method = "BH")
 p_cat_col_adj
 
+#Wilcox test and statistics
+wilcox.test(Burden_col ~ Count, 
+                           data = subset(data_ARG_cat_long, Facility == "airport"), conf.int = TRUE)
+subset(data_ARG_cat_long, Facility == "airport") %>% wilcox_effsize(Burden_col ~ Count)
+sum(!is.na(subset(data_ARG_cat_long, Facility == "airport")$Burden_col))-1
+
+wilcox.test(Burden_col ~ Count, 
+                           data = subset(data_ARG_cat_long, Facility == "nursing"), conf.int = TRUE)
+subset(data_ARG_cat_long, Facility == "nursing") %>% wilcox_effsize(Burden_col ~ Count)
+sum(!is.na(subset(data_ARG_cat_long, Facility == "nursing")$Burden_col))-1
+
+wilcox.test(Burden_col ~ Count, 
+                           data = subset(data_ARG_cat_long, Facility == "pop_dense"), conf.int = TRUE)
+subset(data_ARG_cat_long, Facility == "pop_dense") %>% wilcox_effsize(Burden_col ~ Count)
+sum(!is.na(subset(data_ARG_cat_long, Facility == "pop_dense")$Burden_col))-1
+
+wilcox.test(Burden_col ~ Count, 
+                           data = subset(data_ARG_cat_long, Facility == "urban"), conf.int = TRUE)
+subset(data_ARG_cat_long, Facility == "urban") %>% wilcox_effsize(Burden_col ~ Count)
+sum(!is.na(subset(data_ARG_cat_long, Facility == "urban")$Burden_col))-1
+
 #For total tetracycline burden
 Fig_tetARGcat_box <-
 ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_tet)) +
@@ -467,7 +499,7 @@ ggplot(data_ARG_cat_long, aes(x = Count, y = Burden_van)) +
   theme(legend.position = "none", axis.text.x = element_text(angle = 30, hjust = 1)) +
   theme_light()
 
-#In concentration
+#In concentration instead of z-score to visualize better
 data_van <- select(data_11_wide, site, plant, city, state, 
                    VanA)
 
@@ -509,6 +541,7 @@ ggsave(Fig_blaARGcat_box, file = "Fig_blaARGcat_box.pdf", width = 5, height = 2)
 ggsave(Fig_colARGcat_box, file = "Fig_colARGcat_box.pdf", width = 5, height = 2)
 ggsave(Fig_tetARGcat_box, file = "Fig_tetARGcat_box.pdf", width = 5, height = 2)
 ggsave(Fig_vanARGcat_box, file = "Fig_vanARGcat_box.pdf", width = 5, height = 2)
+
 ```
 
 Looking a little closer at the beta-lactamase genes:
@@ -576,6 +609,8 @@ corrplot(as.matrix(cor_matrix_bla),
 dev.off()
 ```
 
+Looking at the same categorical variables as before: 
+
 ```{r categorical_bla}
 data_bla_cat <- merge(data_bla, 
                       select(data_ARG_cat, 
@@ -612,6 +647,31 @@ p_cat_NDM <- c(wilcox.test(NDM ~ Count,
 p_cat_NDM_adj <- p.adjust(p_cat_NDM, method = "BH")
 p_cat_NDM_adj
 
+wilcox.test(NDM ~ Count, 
+                           data = subset(data_bla_cat_long, Facility == "airport"), conf.int = TRUE)
+subset(data_bla_cat_long, Facility == "airport") %>% wilcox_effsize(NDM ~ Count)
+sum(!is.na(subset(data_bla_cat_long, Facility == "airport")$NDM))-1
+
+wilcox.test(NDM ~ Count, 
+                           data = subset(data_bla_cat_long, Facility == "hospital"), conf.int = TRUE)
+subset(data_bla_cat_long, Facility == "hospital") %>% wilcox_effsize(NDM ~ Count)
+sum(!is.na(subset(data_bla_cat_long, Facility == "hospital")$NDM))-1
+
+wilcox.test(NDM ~ Count, 
+                           data = subset(data_bla_cat_long, Facility == "nursing"), conf.int = TRUE)
+subset(data_bla_cat_long, Facility == "nursing") %>% wilcox_effsize(NDM ~ Count)
+sum(!is.na(subset(data_bla_cat_long, Facility == "nursing")$NDM))-1
+
+wilcox.test(NDM ~ Count, 
+                           data = subset(data_bla_cat_long, Facility == "pop_dense"), conf.int = TRUE)
+subset(data_bla_cat_long, Facility == "pop_dense") %>% wilcox_effsize(NDM ~ Count)
+sum(!is.na(subset(data_bla_cat_long, Facility == "pop_dense")$NDM))-1
+
+wilcox.test(NDM ~ Count, 
+                           data = subset(data_bla_cat_long, Facility == "urban"), conf.int = TRUE)
+subset(data_bla_cat_long, Facility == "urban") %>% wilcox_effsize(NDM ~ Count)
+sum(!is.na(subset(data_bla_cat_long, Facility == "urban")$NDM))-1
+
 #CMY
 Fig_CMYcat_box <-
 ggplot(data_bla_cat_long, aes(x = Count, y = CMY)) +
@@ -635,6 +695,11 @@ p_cat_CMY <- c(wilcox.test(CMY ~ Count,
 
 p_cat_CMY_adj <- p.adjust(p_cat_CMY, method = "BH")
 p_cat_CMY_adj
+
+wilcox.test(CMY ~ Count, 
+                           data = subset(data_bla_cat_long, Facility == "urban"), conf.int = TRUE)
+subset(data_bla_cat_long, Facility == "urban") %>% wilcox_effsize(CMY ~ Count)
+sum(!is.na(subset(data_bla_cat_long, Facility == "urban")$CMY))-1
 
 #CTX-M
 Fig_CTXMcat_box <-
@@ -848,7 +913,8 @@ Fig_ARB_Region <-
   
 ggsave(Fig_ARB_Region, file = "Fig_ARB_Region.pdf", width = 2, height = 2)
 
-#Fig_ARB_Region_zoom <- 
+#Zoomed version to visualize colistin, tetracycline, and vancomycin burden better
+Fig_ARB_Region_zoom <- 
   ggplot(data_burden_long, aes(x = Burden, y = zscore, fill = Region)) + 
   geom_jitter(color = "darkgrey", size = 0.5) +
   geom_boxplot(alpha = 0.7, outlier.shape = NA) +
@@ -859,7 +925,8 @@ ggsave(Fig_ARB_Region, file = "Fig_ARB_Region.pdf", width = 2, height = 2)
   theme_bw()
   
 ggsave(Fig_ARB_Region_zoom, file = "Fig_ARB_Region_zoom.pdf", width = 5, height = 2)
-  
+
+#For beta-lactamase resistance genes
 Fig_ARGsub_Region <- 
 ggplot(subset(subset(data_all_2, target == "CTX-M" | target == "KPC" | 
                        target == "NDM" | target == "VIM" | target == "MCR-1" | 
@@ -875,6 +942,7 @@ ggplot(subset(subset(data_all_2, target == "CTX-M" | target == "KPC" |
 
 ggsave(Fig_ARGsub_Region, file = "Fig_ARGsub_Region.pdf", width = 7, height = 2)
 
+#All ARGs
 Fig_ARG_Region <- 
 ggplot(data_all_3, aes(x = target, y = mean_ARG_S, fill = Region)) + 
   geom_jitter(color = "darkgrey", size = 0.2) +
@@ -890,28 +958,12 @@ ggplot(data_all_3, aes(x = target, y = mean_ARG_S, fill = Region)) +
 
 ggsave(Fig_ARG_Region, file = "Fig_ARG_Region.pdf", width = 6.5, height = 3)
 
-#histogram of ARB 
-ggplot(data_burden_long) +
-  geom_histogram(aes(x = zscore, fill = Region)) +
-  facet_wrap(vars(Burden), scales = "free", nrow = 1)
 ```
-
-```{r fig.height = 10}
-  ggplot(subset(data_burden_long, Burden == "Burden_van"), aes(x = Burden, y = zscore, fill = Region)) + 
-  geom_jitter(color = "darkgrey", size = 0.5) +
-  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-  scale_shape_manual(values = c(19, 1)) +
-  ylab("Burden score") + 
-  scale_fill_manual(values = c("#4f5dae", "#c097c6", "#2fa4bb", "#3fbd71")) +
-  theme_bw()
-```
-
 
 We can do a Kruskal-Wallis test to see if there is a significant difference in at least one of the groups. 
 
 ```{r geo_kw}
 #Kruskal-Wallis test for each ARG
-
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "CMY"))
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "CTX-M"))
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "KPC"))
@@ -922,7 +974,6 @@ kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "OXA-48"))
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "TEM"))
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "TetW"))
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "VanA"))
-#kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "VanB"))
 kruskal.test(mean_ARG_S ~ Region, data = subset(data_all_3, target == "VIM"))
 
 #Kruskal wallis on overall ARG burden of the region 
@@ -936,7 +987,7 @@ kruskal.test(Burden_tet ~ Region, data = data_burden_mer)
 kruskal.test(Burden_van ~ Region, data = data_burden_mer)
 ```
 
-Kruskal-Wallis shows that mecA, TetW, VanB, VIM is not statistically different (p > 0.05) but the rest are statistically different (p < 0.05).
+Kruskal-Wallis shows that mecA, TetW, VIM is not statistically different (p > 0.05) but the rest are statistically different (p < 0.05). So we can do a Conover Iman posthoc test to see pairwise difference. 
 
 ```{r geo_conover}
 #Conover Iman posthoc test
@@ -984,108 +1035,4 @@ conover.test(data_burden_mer$Burden_col, data_burden_mer$Region,
 conover.test(data_burden_mer$Burden_van, data_burden_mer$Region,
              method = "BH")
 
-```
-
-Looking at geographical trends of ARD use 
-```{r}
-
-#Reformating data frame 
-data_ABD_use <- data_ARG_ABD_conc %>% 
-  pivot_longer(cols = Colistin_norm:Bla_norm, 
-               names_to = "ABD_Class",
-               values_to = "ABD_Use") %>% 
-  rename(State = state) %>%
-  merge(state_abbrev, by = c("State")) %>%
-  select(-`State Code`)
-
-#Antibiotic use by geographic region
-ggplot(data_ABD_use, aes(x = ABD_Class, y = ABD_Use, fill = Region)) + 
-  geom_jitter(color = "darkgrey", size = 0.5, alpha = 0.9) +
-  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-  scale_y_continuous(trans = 'log10') + 
-  scale_shape_manual(values = c(19, 1)) +
-  ylab("Proportion of prescription") + 
-  theme_bw() +
-  labs(title = "Antibiotic use by geographic region")
-```
-
-```{r abd_kw}
-#Kruskal-Wallis test for each ABD class
-kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "ABD_tot"))
-kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "Bla_norm"))
-kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "Tetracycline_norm"))
-kruskal.test(ABD_Use ~ Region, data = subset(data_ABD_use, ABD_Class == "Vancomycin_norm"))
-
-#Conover-iman posthoc test
-conover.test(subset(data_ABD_use, ABD_Class == "ABD_tot")$ABD_Use, 
-             subset(data_ABD_use, ABD_Class == "ABD_tot")$Region,
-             method = "Bonferroni")
-
-conover.test(subset(data_ABD_use, ABD_Class == "Bla_norm")$ABD_Use, 
-             subset(data_ABD_use, ABD_Class == "Bla_norm")$Region,
-             method = "Bonferroni")
-
-```
-
-
-```{r}
-
-ggplot(data_ARG_ABD, aes(x = ABD_tot, y = Burden_all, color = Region)) +
-  geom_point()
-
-```
-
-```{r CA}
-#Calculate Spearman correlation coefficients
-data_ARG_CA <- subset(data_ARG_all, state == "California")
-
-cor_matrix_CA_z <- as.data.frame(cor(data_ARG_CA[,5:34],
-                  use = "na.or.complete",
-                  method = "spearman")) %>%
-  select(-Burden_all, -Burden_bla, -Burden_col, -Burden_van, -Burden_tet) %>%
-  slice_head(n = 5)
-
-p_matrix_CA_z <- as.data.frame(cor.mtest(data_ARG_CA[,5:34],
-                  use = "na.or.complete",
-                  method = "spearman",
-                  conf.level = 0.95)$p) %>%
-  select(-Burden_all, -Burden_bla, -Burden_col, -Burden_van, -Burden_tet) %>%
-  slice_head(n = 5)  
-
-#Correlation plot for ARG as z-scores
-pdf("Fig_ARBCA_Corr.pdf")
-corrplot(as.matrix(cor_matrix_CA_z),
-         method = "ellipse",
-         tl.col = "black",
-         tl.srt = 45,
-         p.mat = as.matrix(p_matrix_CA_z),
-         sig.level = 0.05,
-         insig = "blank", 
-         addCoef.col = "black", 
-         number.cex = 0.5, 
-         title = "Correlation among ARG z-score and secondary dataset",
-         mar = c(0,0,2,0),
-         cex.main = 0.8)
-dev.off()
-
-#Adjust for p-value
-p_adj_CA_z <- t(apply(as.matrix(p_matrix_CA_z), 
-                     MARGIN = 1, 
-                     FUN = function(x) p.adjust(x, method = "BH", n = 25)))
-
-#Correlation plot for ARG as z-scores
-pdf("Fig_ARBAll_Corr_adj.pdf")
-corrplot(as.matrix(cor_matrix_CA_z),
-         method = "ellipse",
-         tl.col = "black",
-         tl.srt = 45,
-         p.mat = p_adj_CA_z,
-         sig.level = 0.05,
-         insig = "blank", 
-         addCoef.col = "black", 
-         number.cex = 0.5, 
-         title = "Correlation among ARG z-score and secondary dataset",
-         mar = c(0,0,2,0),
-         cex.main = 0.8)
-dev.off()
 ```
