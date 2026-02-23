@@ -7,4 +7,4 @@ This github contains collection of codes used for manuscript Wastewater surveill
 * ww_arg_RF.Rmd: This code runs the random forest prediction model. The main outputs are prediction maps and results of the random forest modeling. This code should not take more than an hour to run.
 
 ## Notes 
-All data used for analysis are available on the Stanford Data Repository: https://purl.stanford.edu/vb318cm9509. The antibiotic prescription data from Epic Cosmos could not be made publicly available and therefore are excluded. 
+All data used for analysis are available on the Stanford Data Repository: https://purl.stanford.edu/vb318cm9509. Access can be obtained through affiliation and approval by a Cosmos participating organization or by contacting Epic Cosmos at https://cosmos.epic.com/request-access/. Other secondary data used in this study are publicly available from data sources mentioned in the Materials and Methods section.
